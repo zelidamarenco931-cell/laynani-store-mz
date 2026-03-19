@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Truck, ShieldCheck, CreditCard, Headphones } from "lucide-react";
 
 const features = [
-  { icon: Truck, label: "Entrega Rápida", desc: "5-7 dias úteis" },
+  { icon: Truck, label: "Entrega Rápida", desc: "3-15 dias úteis" },
   { icon: ShieldCheck, label: "Compra Segura", desc: "Dados protegidos" },
   { icon: CreditCard, label: "Pagamento Fácil", desc: "M-Pesa, Cartão, PayPal" },
   { icon: Headphones, label: "Suporte 24/7", desc: "Sempre disponível" },
@@ -41,9 +41,9 @@ const Footer = () => (
       <div>
         <h4 className="mb-3 text-sm font-semibold">Ajuda</h4>
         <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-          <Link to="/" className="hover:text-primary transition-colors">Sobre Nós</Link>
-          <Link to="/" className="hover:text-primary transition-colors">Política de Devolução</Link>
-          <Link to="/" className="hover:text-primary transition-colors">Contacto</Link>
+          <Link to="/sobre" className="hover:text-primary transition-colors">Sobre Nós</Link>
+          <Link to="/politica" className="hover:text-primary transition-colors">Política de Vendas</Link>
+          <Link to="/contacto" className="hover:text-primary transition-colors">Contacto</Link>
         </div>
       </div>
       <div>

@@ -13,6 +13,9 @@ import Checkout from "./pages/Checkout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Account from "./pages/Account";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import Policy from "./pages/Policy";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminOrders from "./pages/admin/AdminOrders";
@@ -39,6 +42,9 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/login" element={<Login />} />
               <Route path="/registrar" element={<Register />} />
+              <Route path="/sobre" element={<About />} />
+              <Route path="/contacto" element={<Contact />} />
+              <Route path="/politica" element={<Policy />} />
               <Route path="/conta" element={<Account />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
