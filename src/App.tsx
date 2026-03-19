@@ -42,6 +42,9 @@ const App = () => (
               <Route path="/checkout" element={<Checkout />} />
               <Route path="/login" element={<Login />} />
               <Route path="/registrar" element={<Register />} />
+              <Route path="/sobre" element={<About />} />
+              <Route path="/contacto" element={<Contact />} />
+              <Route path="/politica" element={<Policy />} />
               <Route path="/conta" element={<Account />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />

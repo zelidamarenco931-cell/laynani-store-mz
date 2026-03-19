@@ -41,9 +41,9 @@ const Footer = () => (
       <div>
         <h4 className="mb-3 text-sm font-semibold">Ajuda</h4>
         <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-          <Link to="/" className="hover:text-primary transition-colors">Sobre Nós</Link>
-          <Link to="/" className="hover:text-primary transition-colors">Política de Devolução</Link>
-          <Link to="/" className="hover:text-primary transition-colors">Contacto</Link>
+          <Link to="/sobre" className="hover:text-primary transition-colors">Sobre Nós</Link>
+          <Link to="/politica" className="hover:text-primary transition-colors">Política de Vendas</Link>
+          <Link to="/contacto" className="hover:text-primary transition-colors">Contacto</Link>
         </div>
       </div>
       <div>
