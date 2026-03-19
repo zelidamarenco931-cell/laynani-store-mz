@@ -26,7 +26,7 @@ const statusLabels: Record<string, string> = {
 };
 
 const Account = () => {
-  const { user, signOut, loading: authLoading } = useAuth();
+  const { user, isAdmin, signOut, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [editing, setEditing] = useState(false);
@@ -73,9 +73,19 @@ const Account = () => {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="container flex-1 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Minha Conta</h1>
-          <Button variant="outline" onClick={signOut}><LogOut className="mr-2 h-4 w-4" /> Sair</Button>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold">Minha Conta</h1>
+            {isAdmin && <Badge>Administrador</Badge>}
+          </div>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button asChild>
+                <Link to="/admin">Abrir Painel Admin</Link>
+              </Button>
+            )}
+            <Button variant="outline" onClick={signOut}><LogOut className="mr-2 h-4 w-4" /> Sair</Button>
+          </div>
         </div>
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Profile */}

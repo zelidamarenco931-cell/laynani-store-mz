@@ -1,14 +1,16 @@
 import { Link } from "react-router-dom";
-import { ShoppingCart, Search, Menu, User, Heart } from "lucide-react";
+import { ShoppingCart, Search, Menu, User, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 
 const Navbar = () => {
   const { totalItems } = useCart();
+  const { isAdmin } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
 
   const navLinks = [
@@ -35,6 +37,9 @@ const Navbar = () => {
               {navLinks.map((l) => (
                 <Link key={l.href} to={l.href} className="text-lg font-medium text-foreground/80 hover:text-primary transition-colors">{l.label}</Link>
               ))}
+              {isAdmin && (
+                <Link to="/admin" className="text-lg font-medium text-primary transition-colors">Painel Admin</Link>
+              )}
             </div>
           </SheetContent>
         </Sheet>
@@ -46,6 +51,9 @@ const Navbar = () => {
           {navLinks.map((l) => (
             <Link key={l.href} to={l.href} className="text-sm font-medium text-foreground/70 hover:text-primary transition-colors">{l.label}</Link>
           ))}
+          {isAdmin && (
+            <Link to="/admin" className="text-sm font-medium text-primary transition-colors">Painel Admin</Link>
+          )}
         </nav>
         <div className="flex items-center gap-2">
           <div className="hidden w-64 lg:block">
@@ -55,6 +63,11 @@ const Navbar = () => {
             </div>
           </div>
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSearchOpen(!searchOpen)}><Search className="h-5 w-5" /></Button>
+          {isAdmin && (
+            <Button variant="ghost" size="icon" asChild>
+              <Link to="/admin" aria-label="Painel Admin"><Shield className="h-5 w-5" /></Link>
+            </Button>
+          )}
           <Button variant="ghost" size="icon" asChild><Link to="/conta"><User className="h-5 w-5" /></Link></Button>
           <Button variant="ghost" size="icon" className="relative" asChild>
             <Link to="/carrinho">
