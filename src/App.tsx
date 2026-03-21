@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,25 +7,32 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
-import Catalog from "./pages/Catalog";
-import ProductDetail from "./pages/ProductDetail";
-import Cart from "./pages/Cart";
-import Checkout from "./pages/Checkout";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Account from "./pages/Account";
-import About from "./pages/About";
-import Contact from "./pages/Contact";
-import Policy from "./pages/Policy";
-import AdminLayout from "./pages/admin/AdminLayout";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminOrders from "./pages/admin/AdminOrders";
-import AdminProducts from "./pages/admin/AdminProducts";
-import AdminFinancial from "./pages/admin/AdminFinancial";
-import AdminSettings from "./pages/admin/AdminSettings";
 import NotFound from "./pages/NotFound";
 
+const Catalog = lazy(() => import("./pages/Catalog"));
+const ProductDetail = lazy(() => import("./pages/ProductDetail"));
+const Cart = lazy(() => import("./pages/Cart"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const Account = lazy(() => import("./pages/Account"));
+const About = lazy(() => import("./pages/About"));
+const Contact = lazy(() => import("./pages/Contact"));
+const Policy = lazy(() => import("./pages/Policy"));
+const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
+const AdminProducts = lazy(() => import("./pages/admin/AdminProducts"));
+const AdminFinancial = lazy(() => import("./pages/admin/AdminFinancial"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+
 const queryClient = new QueryClient();
+
+const Loading = () => (
+  <div className="flex min-h-screen items-center justify-center">
+    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -34,27 +42,29 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/catalogo" element={<Catalog />} />
-              <Route path="/produto/:id" element={<ProductDetail />} />
-              <Route path="/carrinho" element={<Cart />} />
-              <Route path="/checkout" element={<Checkout />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/registrar" element={<Register />} />
-              <Route path="/sobre" element={<About />} />
-              <Route path="/contacto" element={<Contact />} />
-              <Route path="/politica" element={<Policy />} />
-              <Route path="/conta" element={<Account />} />
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="pedidos" element={<AdminOrders />} />
-                <Route path="produtos" element={<AdminProducts />} />
-                <Route path="financeiro" element={<AdminFinancial />} />
-                <Route path="configuracoes" element={<AdminSettings />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Suspense fallback={<Loading />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/catalogo" element={<Catalog />} />
+                <Route path="/produto/:id" element={<ProductDetail />} />
+                <Route path="/carrinho" element={<Cart />} />
+                <Route path="/checkout" element={<Checkout />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/registrar" element={<Register />} />
+                <Route path="/sobre" element={<About />} />
+                <Route path="/contacto" element={<Contact />} />
+                <Route path="/politica" element={<Policy />} />
+                <Route path="/conta" element={<Account />} />
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="pedidos" element={<AdminOrders />} />
+                  <Route path="produtos" element={<AdminProducts />} />
+                  <Route path="financeiro" element={<AdminFinancial />} />
+                  <Route path="configuracoes" element={<AdminSettings />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </CartProvider>
       </AuthProvider>

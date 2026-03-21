@@ -10,12 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CreditCard, Smartphone, ArrowLeft, CheckCircle } from "lucide-react";
+import { CreditCard, Smartphone, ArrowLeft, CheckCircle, Building2, Upload, ImageIcon } from "lucide-react";
 
 const paymentMethods = [
-  { id: "mpesa", label: "M-Pesa / e-Mola", icon: Smartphone, desc: "Pagamento manual — envie e anexe comprovante" },
-  { id: "paygate", label: "PayGate (Cartão)", icon: CreditCard, desc: "Cartão internacional ou local" },
-  { id: "dpo", label: "DPO Group", icon: CreditCard, desc: "Cartões africanos" },
+  { id: "mpesa", label: "M-Pesa", icon: Smartphone, desc: "Envie para 852506942 (Felizarda I.M)" },
+  { id: "emola", label: "e-Mola", icon: Smartphone, desc: "Envie para 868214712 (Zelida Isac Marenço)" },
+  { id: "bank", label: "Transferência BIM", icon: Building2, desc: "NIB: 000100000109942147557" },
   { id: "paypal", label: "PayPal", icon: CreditCard, desc: "Conta PayPal" },
 ] as const;
 
@@ -28,6 +28,8 @@ const Checkout = () => {
   const [payment, setPayment] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({ name: "", phone: "", city: "", bairro: "", reference: "" });
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     supabase.from("shipping_rates").select("*").order("province").then(({ data }) => {
@@ -38,20 +40,44 @@ const Checkout = () => {
   const shippingCost = province ? Number(shippingRates.find((r) => r.province === province)?.price_mzn || 0) : 0;
   const grandTotal = totalPrice + shippingCost;
 
+  const uploadProof = async (orderId: string): Promise<string | null> => {
+    if (!proofFile || !user) return null;
+    const ext = proofFile.name.split(".").pop();
+    const path = `${user.id}/${orderId}.${ext}`;
+    const { error } = await supabase.storage.from("payment-proofs").upload(path, proofFile, { upsert: true });
+    if (error) { console.error(error); return null; }
+    const { data } = supabase.storage.from("payment-proofs").getPublicUrl(path);
+    return data.publicUrl;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!province || !payment) { toast.error("Preencha todos os campos obrigatórios."); return; }
     if (!user) { toast.error("Faça login para continuar."); navigate("/login"); return; }
+    if (["mpesa", "emola", "bank"].includes(payment) && !proofFile) {
+      toast.error("Anexe o comprovante de pagamento.");
+      return;
+    }
+
+    setUploading(true);
+
+    const paymentMethodMap: Record<string, string> = { mpesa: "mpesa", emola: "mpesa", bank: "manual", paypal: "paypal" };
 
     const { data: order, error } = await supabase.from("orders").insert({
       user_id: user.id,
       total_mzn: grandTotal,
       status: "pending" as const,
-      payment_method: payment as "mpesa" | "paygate" | "dpo" | "paypal",
-      shipping_address: { province, city: formData.city, bairro: formData.bairro, reference: formData.reference, name: formData.name, phone: formData.phone },
+      payment_method: paymentMethodMap[payment] as "mpesa" | "manual" | "paypal",
+      shipping_address: { province, city: formData.city, bairro: formData.bairro, reference: formData.reference, name: formData.name, phone: formData.phone, payment_detail: payment },
     }).select().single();
 
-    if (error || !order) { toast.error("Erro ao criar pedido."); return; }
+    if (error || !order) { toast.error("Erro ao criar pedido."); setUploading(false); return; }
+
+    // Upload proof
+    const proofUrl = await uploadProof(order.id);
+    if (proofUrl) {
+      await supabase.from("orders").update({ payment_proof_url: proofUrl }).eq("id", order.id);
+    }
 
     const orderItems = items.map((item) => ({
       order_id: order.id,
@@ -61,6 +87,7 @@ const Checkout = () => {
     }));
     await supabase.from("order_items").insert(orderItems);
 
+    setUploading(false);
     setSubmitted(true);
     clearCart();
     toast.success("Pedido realizado com sucesso!");
@@ -73,7 +100,7 @@ const Checkout = () => {
         <CheckCircle className="h-20 w-20 text-primary" />
         <h2 className="text-2xl font-bold">Pedido Confirmado!</h2>
         <p className="text-center text-muted-foreground max-w-md">
-          {payment === "mpesa" ? "Envie o comprovante M-Pesa para confirmarmos o pagamento." : "Será redirecionado para o gateway de pagamento."}
+          O seu comprovante foi enviado. O administrador irá verificar e confirmar o pagamento em breve.
         </p>
         <Button asChild><Link to="/conta">Ver Meus Pedidos</Link></Button>
       </main>
@@ -128,18 +155,72 @@ const Checkout = () => {
               <h2 className="text-lg font-semibold">Método de Pagamento</h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 {paymentMethods.map((m) => (
-                  <button type="button" key={m.id} onClick={() => setPayment(m.id)}
+                  <button type="button" key={m.id} onClick={() => { setPayment(m.id); setProofFile(null); }}
                     className={`flex items-start gap-3 rounded-lg border p-4 text-left transition-all ${payment === m.id ? "border-primary bg-primary/5 shadow-card" : "hover:border-primary/30"}`}>
                     <m.icon className={`mt-0.5 h-5 w-5 shrink-0 ${payment === m.id ? "text-primary" : "text-muted-foreground"}`} />
                     <div><p className="text-sm font-medium">{m.label}</p><p className="text-xs text-muted-foreground">{m.desc}</p></div>
                   </button>
                 ))}
               </div>
+
               {payment === "mpesa" && (
-                <div className="rounded-lg bg-muted p-4 text-sm">
-                  <p className="font-medium">Instruções M-Pesa:</p>
-                  <p className="text-muted-foreground">Envie <strong>{grandTotal.toLocaleString("pt-MZ")} MZN</strong> para o número <strong>84 XXX XXXX</strong>. Após o envio, anexe o comprovante.</p>
-                  <Input type="file" className="mt-3" accept="image/*,.pdf" />
+                <div className="rounded-lg bg-muted p-4 text-sm space-y-3">
+                  <p className="font-medium">📱 Instruções M-Pesa:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>Abra o M-Pesa no seu telefone</li>
+                    <li>Envie <strong className="text-foreground">{grandTotal.toLocaleString("pt-MZ")} MZN</strong></li>
+                    <li>Para o número: <strong className="text-foreground">852 506 942</strong></li>
+                    <li>Nome: <strong className="text-foreground">Felizarda I.M</strong></li>
+                    <li>Tire screenshot do comprovante e anexe abaixo</li>
+                  </ol>
+                </div>
+              )}
+
+              {payment === "emola" && (
+                <div className="rounded-lg bg-muted p-4 text-sm space-y-3">
+                  <p className="font-medium">📱 Instruções e-Mola:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                    <li>Abra o e-Mola no seu telefone</li>
+                    <li>Envie <strong className="text-foreground">{grandTotal.toLocaleString("pt-MZ")} MZN</strong></li>
+                    <li>Para o número: <strong className="text-foreground">868 214 712</strong></li>
+                    <li>Nome: <strong className="text-foreground">Zelida Isac Marenço</strong></li>
+                    <li>Tire screenshot do comprovante e anexe abaixo</li>
+                  </ol>
+                </div>
+              )}
+
+              {payment === "bank" && (
+                <div className="rounded-lg bg-muted p-4 text-sm space-y-3">
+                  <p className="font-medium">🏦 Dados para Transferência Bancária (BIM):</p>
+                  <div className="space-y-1 text-muted-foreground">
+                    <p>NIB: <strong className="text-foreground">000100000109942147557</strong></p>
+                    <p>Valor: <strong className="text-foreground">{grandTotal.toLocaleString("pt-MZ")} MZN</strong></p>
+                  </div>
+                  <p className="text-muted-foreground">Após a transferência, tire screenshot do comprovante e anexe abaixo.</p>
+                </div>
+              )}
+
+              {["mpesa", "emola", "bank"].includes(payment) && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Upload className="h-4 w-4" /> Comprovante de Pagamento *
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type="file"
+                      accept="image/*,.pdf"
+                      required
+                      onChange={(e) => setProofFile(e.target.files?.[0] || null)}
+                      className="cursor-pointer"
+                    />
+                  </div>
+                  {proofFile && (
+                    <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2 text-xs">
+                      <ImageIcon className="h-4 w-4 text-primary" />
+                      <span className="truncate">{proofFile.name}</span>
+                      <span className="text-muted-foreground">({(proofFile.size / 1024).toFixed(0)} KB)</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -150,7 +231,7 @@ const Checkout = () => {
               <div className="max-h-60 space-y-3 overflow-y-auto">
                 {items.map((item) => (
                   <div key={item.id} className="flex items-center gap-3">
-                    <img src={item.image} alt={item.name} className="h-12 w-12 rounded-lg object-cover" />
+                    <img src={item.image} alt={item.name} className="h-12 w-12 rounded-lg object-cover" loading="lazy" />
                     <div className="flex-1"><p className="text-sm font-medium line-clamp-1">{item.name}</p><p className="text-xs text-muted-foreground">Qtd: {item.quantity}</p></div>
                     <p className="text-sm font-medium">{(item.price * item.quantity).toLocaleString("pt-MZ")} MZN</p>
                   </div>
@@ -163,7 +244,9 @@ const Checkout = () => {
                   <span>Total</span><span className="text-primary">{grandTotal.toLocaleString("pt-MZ")} MZN</span>
                 </div>
               </div>
-              <Button type="submit" size="lg" className="w-full" disabled={!user}>Confirmar Pedido</Button>
+              <Button type="submit" size="lg" className="w-full" disabled={!user || uploading}>
+                {uploading ? "Enviando..." : "Confirmar Pedido"}
+              </Button>
             </div>
           </div>
         </form>

@@ -59,6 +59,7 @@ const HeroBanner = () => (
                 src={slide.image}
                 alt={slide.title}
                 className="absolute inset-0 h-full w-full object-cover"
+                loading={i === 0 ? "eager" : "lazy"}
               />
               {/* Gradient overlay */}
               <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
