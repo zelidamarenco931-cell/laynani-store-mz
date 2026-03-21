@@ -149,6 +149,7 @@ export type Database = {
       products: {
         Row: {
           category_id: string | null
+          color: string | null
           created_at: string
           delivery_time: string | null
           description: string | null
@@ -156,12 +157,15 @@ export type Database = {
           images: string[] | null
           name: string
           price_mzn: number
+          size: string | null
           sku: string | null
           stock: number
           updated_at: string
+          weight: string | null
         }
         Insert: {
           category_id?: string | null
+          color?: string | null
           created_at?: string
           delivery_time?: string | null
           description?: string | null
@@ -169,12 +173,15 @@ export type Database = {
           images?: string[] | null
           name: string
           price_mzn?: number
+          size?: string | null
           sku?: string | null
           stock?: number
           updated_at?: string
+          weight?: string | null
         }
         Update: {
           category_id?: string | null
+          color?: string | null
           created_at?: string
           delivery_time?: string | null
           description?: string | null
@@ -182,9 +189,11 @@ export type Database = {
           images?: string[] | null
           name?: string
           price_mzn?: number
+          size?: string | null
           sku?: string | null
           stock?: number
           updated_at?: string
+          weight?: string | null
         }
         Relationships: [
           {
