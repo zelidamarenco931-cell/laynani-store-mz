@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
@@ -17,32 +17,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const initializedRef = useRef(false);
 
   const checkAdmin = async (userId: string) => {
-    const { data } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
-    setIsAdmin(!!data);
+    try {
+      const { data } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+      setIsAdmin(!!data);
+    } catch {
+      setIsAdmin(false);
+    }
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_, session) => {
-      const u = session?.user ?? null;
-      setUser(u);
-      if (u) {
-        await checkAdmin(u.id);
-      } else {
-        setIsAdmin(false);
+    // Set up listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Skip if getSession already handled the initial load
+      if (!initializedRef.current && event === "INITIAL_SESSION") {
+        const u = session?.user ?? null;
+        setUser(u);
+        if (u) {
+          await checkAdmin(u.id);
+        } else {
+          setIsAdmin(false);
+        }
+        initializedRef.current = true;
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      // Handle subsequent auth changes (login, logout, token refresh)
+      if (initializedRef.current) {
+        const u = session?.user ?? null;
+        setUser(u);
+        if (u) {
+          // Use setTimeout to avoid Supabase deadlock on token refresh
+          setTimeout(() => checkAdmin(u.id), 0);
+        } else {
+          setIsAdmin(false);
+        }
+      }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const u = session?.user ?? null;
-      setUser(u);
-      if (u) checkAdmin(u.id);
-      setLoading(false);
-    });
+    // Fallback: if INITIAL_SESSION never fires within 3s, force loading=false
+    const timeout = setTimeout(() => {
+      if (!initializedRef.current) {
+        initializedRef.current = true;
+        setLoading(false);
+      }
+    }, 3000);
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
