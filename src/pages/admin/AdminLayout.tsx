@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, ShoppingBag, Package, DollarSign, Settings, ArrowLeft, Menu, FolderOpen } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, Package, DollarSign, Settings, ArrowLeft, Menu, FolderOpen, Megaphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -10,6 +10,7 @@ const adminLinks = [
   { label: "Pedidos", href: "/admin/pedidos", icon: ShoppingBag },
   { label: "Produtos", href: "/admin/produtos", icon: Package },
   { label: "Categorias", href: "/admin/categorias", icon: FolderOpen },
+  { label: "Marketing", href: "/admin/marketing", icon: Megaphone },
   { label: "Financeiro", href: "/admin/financeiro", icon: DollarSign },
   { label: "Configurações", href: "/admin/configuracoes", icon: Settings },
 ];

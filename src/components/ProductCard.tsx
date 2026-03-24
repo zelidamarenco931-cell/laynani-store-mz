@@ -11,9 +11,10 @@ interface ProductCardProps {
   image: string;
   rating?: number;
   reviews?: number;
+  isSponsored?: boolean;
 }
 
-const ProductCard = ({ id, name, price, image, rating = 0, reviews = 0 }: ProductCardProps) => {
+const ProductCard = ({ id, name, price, image, rating = 0, reviews = 0, isSponsored = false }: ProductCardProps) => {
   const { addItem } = useCart();
 
   const handleAdd = (e: React.MouseEvent) => {
@@ -27,6 +28,11 @@ const ProductCard = ({ id, name, price, image, rating = 0, reviews = 0 }: Produc
       <div className="overflow-hidden rounded-xl border bg-card shadow-card transition-all duration-300 hover:shadow-elevated">
         <div className="relative aspect-square overflow-hidden bg-muted">
           <img src={image} alt={name} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+          {isSponsored && (
+            <span className="absolute left-2 top-2 rounded-full bg-primary px-2.5 py-0.5 text-[10px] font-semibold text-primary-foreground shadow-sm">
+              ✨ Patrocinado
+            </span>
+          )}
           <Button
             size="icon"
             className="absolute bottom-3 right-3 h-9 w-9 rounded-full opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-primary text-primary-foreground hover:bg-primary/90"
