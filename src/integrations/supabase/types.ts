@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_campaigns: {
+        Row: {
+          budget_mzn: number
+          created_at: string
+          end_date: string | null
+          id: string
+          name: string
+          platform: string
+          product_id: string
+          spent_mzn: number
+          start_date: string
+          status: string
+          updated_at: string
+          utm_medium: string | null
+          utm_source: string | null
+        }
+        Insert: {
+          budget_mzn?: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          name: string
+          platform?: string
+          product_id: string
+          spent_mzn?: number
+          start_date?: string
+          status?: string
+          updated_at?: string
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Update: {
+          budget_mzn?: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          name?: string
+          platform?: string
+          product_id?: string
+          spent_mzn?: number
+          start_date?: string
+          status?: string
+          updated_at?: string
+          utm_medium?: string | null
+          utm_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ad_campaigns_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string
@@ -145,6 +201,38 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      product_featured: {
+        Row: {
+          id: string
+          is_sponsored: boolean
+          priority: number
+          product_id: string
+          started_at: string
+        }
+        Insert: {
+          id?: string
+          is_sponsored?: boolean
+          priority?: number
+          product_id: string
+          started_at?: string
+        }
+        Update: {
+          id?: string
+          is_sponsored?: boolean
+          priority?: number
+          product_id?: string
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_featured_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
