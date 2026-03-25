@@ -16,7 +16,7 @@ const Navbar = () => {
   const navLinks = [
     { label: "Início", href: "/" },
     { label: "Catálogo", href: "/catalogo" },
-    { label: "Promoções", href: "/catalogo?promo=true" },
+    { label: "Afiliados", href: "/afiliados" },
   ];
 
   return (

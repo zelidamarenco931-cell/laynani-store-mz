@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 const ProductDetail = () => {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const { addItem } = useCart();
   const [product, setProduct] = useState<any>(null);
   const [qty, setQty] = useState(1);
@@ -22,7 +23,22 @@ const ProductDetail = () => {
       setProduct(data);
       setLoading(false);
     });
-  }, [id]);
+
+    // Track affiliate click
+    const ref = searchParams.get("ref");
+    if (ref) {
+      localStorage.setItem("affiliate_ref", ref);
+      supabase.from("affiliates").select("id").eq("affiliate_code", ref).single().then(({ data: aff }) => {
+        if (aff) {
+          supabase.from("affiliate_clicks").insert({
+            affiliate_id: aff.id,
+            product_id: id,
+            user_agent: navigator.userAgent,
+          } as any).then(() => {});
+        }
+      });
+    }
+  }, [id, searchParams]);
 
   if (loading) return <div className="flex min-h-screen items-center justify-center"><p>Carregando...</p></div>;
 
