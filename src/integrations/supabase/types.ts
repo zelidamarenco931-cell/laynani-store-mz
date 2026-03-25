@@ -70,6 +70,164 @@ export type Database = {
           },
         ]
       }
+      affiliate_clicks: {
+        Row: {
+          affiliate_id: string
+          clicked_at: string
+          id: string
+          ip_address: string | null
+          product_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          affiliate_id: string
+          clicked_at?: string
+          id?: string
+          ip_address?: string | null
+          product_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          affiliate_id?: string
+          clicked_at?: string
+          id?: string
+          ip_address?: string | null
+          product_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_clicks_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_clicks_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_commissions: {
+        Row: {
+          affiliate_id: string
+          amount_mzn: number
+          created_at: string
+          id: string
+          order_id: string
+          status: string
+        }
+        Insert: {
+          affiliate_id: string
+          amount_mzn?: number
+          created_at?: string
+          id?: string
+          order_id: string
+          status?: string
+        }
+        Update: {
+          affiliate_id?: string
+          amount_mzn?: number
+          created_at?: string
+          id?: string
+          order_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_commissions_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_commissions_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_payouts: {
+        Row: {
+          account_details: string
+          affiliate_id: string
+          amount_mzn: number
+          id: string
+          method: string
+          paid_at: string | null
+          requested_at: string
+          status: string
+        }
+        Insert: {
+          account_details: string
+          affiliate_id: string
+          amount_mzn?: number
+          id?: string
+          method: string
+          paid_at?: string | null
+          requested_at?: string
+          status?: string
+        }
+        Update: {
+          account_details?: string
+          affiliate_id?: string
+          amount_mzn?: number
+          id?: string
+          method?: string
+          paid_at?: string | null
+          requested_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_payouts_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliates: {
+        Row: {
+          affiliate_code: string
+          commission_rate: number
+          id: string
+          joined_at: string
+          reason: string | null
+          status: string
+          user_id: string
+          whatsapp: string | null
+        }
+        Insert: {
+          affiliate_code: string
+          commission_rate?: number
+          id?: string
+          joined_at?: string
+          reason?: string | null
+          status?: string
+          user_id: string
+          whatsapp?: string | null
+        }
+        Update: {
+          affiliate_code?: string
+          commission_rate?: number
+          id?: string
+          joined_at?: string
+          reason?: string | null
+          status?: string
+          user_id?: string
+          whatsapp?: string | null
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -165,6 +323,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          affiliate_id: string | null
           created_at: string
           id: string
           payment_method: Database["public"]["Enums"]["payment_method"] | null
@@ -177,6 +336,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          affiliate_id?: string | null
           created_at?: string
           id?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
@@ -189,6 +349,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          affiliate_id?: string | null
           created_at?: string
           id?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
@@ -200,7 +361,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_featured: {
         Row: {
