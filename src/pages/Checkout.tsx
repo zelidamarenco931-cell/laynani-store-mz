@@ -63,13 +63,22 @@ const Checkout = () => {
 
     const paymentMethodMap: Record<string, string> = { mpesa: "mpesa", emola: "mpesa", bank: "manual", paypal: "paypal" };
 
+    // Check for affiliate ref
+    let affiliateId: string | null = null;
+    const refCode = localStorage.getItem("affiliate_ref");
+    if (refCode) {
+      const { data: aff } = await supabase.from("affiliates").select("id, user_id").eq("affiliate_code", refCode).eq("status", "active").single();
+      if (aff && aff.user_id !== user.id) affiliateId = aff.id;
+    }
+
     const { data: order, error } = await supabase.from("orders").insert({
       user_id: user.id,
       total_mzn: grandTotal,
       status: "pending" as const,
       payment_method: paymentMethodMap[payment] as "mpesa" | "manual" | "paypal",
       shipping_address: { province, city: formData.city, bairro: formData.bairro, reference: formData.reference, name: formData.name, phone: formData.phone, payment_detail: payment },
-    }).select().single();
+      ...(affiliateId ? { affiliate_id: affiliateId } : {}),
+    } as any).select().single();
 
     if (error || !order) { toast.error("Erro ao criar pedido."); setUploading(false); return; }
 
@@ -86,6 +95,19 @@ const Checkout = () => {
       price_mzn: item.price,
     }));
     await supabase.from("order_items").insert(orderItems);
+
+    // Create affiliate commission if applicable
+    if (affiliateId) {
+      const { data: affData } = await supabase.from("affiliates").select("commission_rate").eq("id", affiliateId).single();
+      const rate = affData?.commission_rate || 0.10;
+      await supabase.from("affiliate_commissions").insert({
+        affiliate_id: affiliateId,
+        order_id: order.id,
+        amount_mzn: grandTotal * Number(rate),
+        status: "pending",
+      } as any);
+      localStorage.removeItem("affiliate_ref");
+    }
 
     setUploading(false);
     setSubmitted(true);
