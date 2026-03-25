@@ -27,6 +27,9 @@ const AdminFinancial = lazy(() => import("./pages/admin/AdminFinancial"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const AdminCategories = lazy(() => import("./pages/admin/AdminCategories"));
 const AdminMarketing = lazy(() => import("./pages/admin/AdminMarketing"));
+const AdminAffiliates = lazy(() => import("./pages/admin/AdminAffiliates"));
+const AffiliateJoin = lazy(() => import("./pages/AffiliateJoin"));
+const AffiliateDashboard = lazy(() => import("./pages/AffiliateDashboard"));
 
 const queryClient = new QueryClient();
 
@@ -57,12 +60,15 @@ const App = () => (
                 <Route path="/contacto" element={<Contact />} />
                 <Route path="/politica" element={<Policy />} />
                 <Route path="/conta" element={<Account />} />
+                <Route path="/afiliados" element={<AffiliateJoin />} />
+                <Route path="/afiliados/painel" element={<AffiliateDashboard />} />
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="pedidos" element={<AdminOrders />} />
                   <Route path="produtos" element={<AdminProducts />} />
                   <Route path="categorias" element={<AdminCategories />} />
                   <Route path="marketing" element={<AdminMarketing />} />
+                  <Route path="afiliados" element={<AdminAffiliates />} />
                   <Route path="financeiro" element={<AdminFinancial />} />
                   <Route path="configuracoes" element={<AdminSettings />} />
                 </Route>
