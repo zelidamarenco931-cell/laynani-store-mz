@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Package, User, LogOut, Settings } from "lucide-react";
+import { Package, User, LogOut, Settings, Share2 } from "lucide-react";
 
 const provinces = [
   "Maputo Cidade", "Maputo Província", "Gaza", "Inhambane", "Sofala",
@@ -84,6 +84,9 @@ const Account = () => {
                 <Link to="/admin">Abrir Painel Admin</Link>
               </Button>
             )}
+            <Button variant="outline" asChild>
+              <Link to="/afiliados/painel"><Share2 className="mr-2 h-4 w-4" /> Painel Afiliado</Link>
+            </Button>
             <Button variant="outline" onClick={signOut}><LogOut className="mr-2 h-4 w-4" /> Sair</Button>
           </div>
         </div>
