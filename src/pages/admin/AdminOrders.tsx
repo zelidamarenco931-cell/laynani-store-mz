@@ -20,11 +20,41 @@ type OrderStatus = "pending" | "paid" | "shipped" | "delivered" | "cancelled";
 const AdminOrders = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [trackingCode, setTrackingCode] = useState("");
-  const [proofUrl, setProofUrl] = useState<string | null>(null);
 
   const fetchOrders = async () => {
-    const { data } = await supabase.from("orders").select("*, profiles!orders_user_id_fkey(name, email, phone)").order("created_at", { ascending: false });
-    if (data) setOrders(data);
+    // Fetch orders first, then fetch profiles separately by user_id
+    const { data: ordersData, error } = await supabase
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching orders:", error);
+      return;
+    }
+    if (!ordersData || ordersData.length === 0) {
+      setOrders([]);
+      return;
+    }
+
+    // Get unique user_ids
+    const userIds = [...new Set(ordersData.map(o => o.user_id))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, name, email, phone")
+      .in("user_id", userIds);
+
+    const profileMap: Record<string, any> = {};
+    if (profiles) {
+      profiles.forEach(p => { profileMap[p.user_id] = p; });
+    }
+
+    const enriched = ordersData.map(o => ({
+      ...o,
+      profile: profileMap[o.user_id] || null,
+    }));
+
+    setOrders(enriched);
   };
 
   useEffect(() => { fetchOrders(); }, []);
@@ -61,7 +91,7 @@ const AdminOrders = () => {
               <div>
                 <p className="font-medium">#{order.id.slice(0, 8)}</p>
                 <p className="text-xs text-muted-foreground">
-                  {order.profiles?.name || order.profiles?.email} • {new Date(order.created_at).toLocaleDateString("pt-MZ")}
+                  {order.profile?.name || order.profile?.email || "Cliente"} • {new Date(order.created_at).toLocaleDateString("pt-MZ")}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Pagamento: <strong>{getPaymentDetail(order)}</strong>
@@ -82,22 +112,17 @@ const AdminOrders = () => {
             )}
 
             <div className="mt-3 flex flex-wrap gap-2">
-              {/* Comprovante */}
               {order.payment_proof_url && (
                 <Dialog>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" onClick={() => setProofUrl(order.payment_proof_url)}>
+                    <Button size="sm" variant="outline">
                       <Eye className="mr-1 h-4 w-4" /> Ver Comprovante
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-lg">
                     <DialogHeader><DialogTitle>Comprovante de Pagamento</DialogTitle></DialogHeader>
                     <div className="flex justify-center">
-                      <img
-                        src={order.payment_proof_url}
-                        alt="Comprovante"
-                        className="max-h-[60vh] rounded-lg object-contain"
-                      />
+                      <img src={order.payment_proof_url} alt="Comprovante" className="max-h-[60vh] rounded-lg object-contain" />
                     </div>
                     {order.status === "pending" && (
                       <div className="flex gap-2 pt-2">
@@ -113,7 +138,6 @@ const AdminOrders = () => {
                 </Dialog>
               )}
 
-              {/* Ações por status */}
               {order.status === "pending" && !order.payment_proof_url && (
                 <>
                   <Button size="sm" onClick={() => updateStatus(order.id, "paid")}>

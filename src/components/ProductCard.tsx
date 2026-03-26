@@ -8,13 +8,15 @@ interface ProductCardProps {
   id: string;
   name: string;
   price: number;
+  originalPrice?: number;
   image: string;
   rating?: number;
   reviews?: number;
   isSponsored?: boolean;
+  hasPromotion?: boolean;
 }
 
-const ProductCard = ({ id, name, price, image, rating = 0, reviews = 0, isSponsored = false }: ProductCardProps) => {
+const ProductCard = ({ id, name, price, originalPrice, image, rating = 0, reviews = 0, isSponsored = false, hasPromotion = false }: ProductCardProps) => {
   const { addItem } = useCart();
 
   const handleAdd = (e: React.MouseEvent) => {
@@ -50,7 +52,14 @@ const ProductCard = ({ id, name, price, image, rating = 0, reviews = 0, isSponso
               <span className="text-xs text-muted-foreground">({reviews})</span>
             </div>
           )}
-          <p className="mt-2 text-lg font-bold text-primary">{price.toLocaleString("pt-MZ")} MZN</p>
+          {hasPromotion && originalPrice ? (
+            <div className="mt-2 flex items-baseline gap-2">
+              <p className="text-lg font-bold text-destructive">{price.toLocaleString("pt-MZ")} MZN</p>
+              <p className="text-xs text-muted-foreground line-through">{originalPrice.toLocaleString("pt-MZ")}</p>
+            </div>
+          ) : (
+            <p className="mt-2 text-lg font-bold text-primary">{price.toLocaleString("pt-MZ")} MZN</p>
+          )}
         </div>
       </div>
     </Link>

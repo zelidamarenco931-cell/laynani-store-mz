@@ -252,6 +252,24 @@ export type Database = {
         }
         Relationships: []
       }
+      color_options: {
+        Row: {
+          hex_code: string
+          id: string
+          name: string
+        }
+        Insert: {
+          hex_code: string
+          id?: string
+          name: string
+        }
+        Update: {
+          hex_code?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       coupons: {
         Row: {
           active: boolean
@@ -403,20 +421,110 @@ export type Database = {
           },
         ]
       }
+      product_images: {
+        Row: {
+          color: string | null
+          id: string
+          image_url: string
+          is_primary: boolean
+          product_id: string
+          sort_order: number
+        }
+        Insert: {
+          color?: string | null
+          id?: string
+          image_url: string
+          is_primary?: boolean
+          product_id: string
+          sort_order?: number
+        }
+        Update: {
+          color?: string | null
+          id?: string
+          image_url?: string
+          is_primary?: boolean
+          product_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_variants: {
+        Row: {
+          color: string | null
+          color_hex: string | null
+          id: string
+          price_adjustment_mzn: number | null
+          product_id: string
+          size: string | null
+          sku_variant: string | null
+          stock: number
+          weight_kg: number | null
+        }
+        Insert: {
+          color?: string | null
+          color_hex?: string | null
+          id?: string
+          price_adjustment_mzn?: number | null
+          product_id: string
+          size?: string | null
+          sku_variant?: string | null
+          stock?: number
+          weight_kg?: number | null
+        }
+        Update: {
+          color?: string | null
+          color_hex?: string | null
+          id?: string
+          price_adjustment_mzn?: number | null
+          product_id?: string
+          size?: string | null
+          sku_variant?: string | null
+          stock?: number
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category_id: string | null
           color: string | null
           created_at: string
           delivery_time: string | null
+          delivery_time_max: number
+          delivery_time_min: number
           description: string | null
+          has_promotion: boolean
           id: string
           images: string[] | null
+          meta_description: string | null
+          meta_title: string | null
           name: string
+          origin: string | null
           price_mzn: number
+          promotion_end_date: string | null
+          promotion_start_date: string | null
+          promotional_price_mzn: number | null
           size: string | null
           sku: string | null
+          status: string
           stock: number
+          tags: string[] | null
           updated_at: string
           weight: string | null
         }
@@ -425,14 +533,25 @@ export type Database = {
           color?: string | null
           created_at?: string
           delivery_time?: string | null
+          delivery_time_max?: number
+          delivery_time_min?: number
           description?: string | null
+          has_promotion?: boolean
           id?: string
           images?: string[] | null
+          meta_description?: string | null
+          meta_title?: string | null
           name: string
+          origin?: string | null
           price_mzn?: number
+          promotion_end_date?: string | null
+          promotion_start_date?: string | null
+          promotional_price_mzn?: number | null
           size?: string | null
           sku?: string | null
+          status?: string
           stock?: number
+          tags?: string[] | null
           updated_at?: string
           weight?: string | null
         }
@@ -441,14 +560,25 @@ export type Database = {
           color?: string | null
           created_at?: string
           delivery_time?: string | null
+          delivery_time_max?: number
+          delivery_time_min?: number
           description?: string | null
+          has_promotion?: boolean
           id?: string
           images?: string[] | null
+          meta_description?: string | null
+          meta_title?: string | null
           name?: string
+          origin?: string | null
           price_mzn?: number
+          promotion_end_date?: string | null
+          promotion_start_date?: string | null
+          promotional_price_mzn?: number | null
           size?: string | null
           sku?: string | null
+          status?: string
           stock?: number
+          tags?: string[] | null
           updated_at?: string
           weight?: string | null
         }
@@ -548,6 +678,24 @@ export type Database = {
           id?: string
           price_mzn?: number
           province?: string
+        }
+        Relationships: []
+      }
+      size_options: {
+        Row: {
+          category_type: string
+          id: string
+          size_name: string
+        }
+        Insert: {
+          category_type?: string
+          id?: string
+          size_name: string
+        }
+        Update: {
+          category_type?: string
+          id?: string
+          size_name?: string
         }
         Relationships: []
       }
