@@ -8,10 +8,12 @@ interface ProductCardProps {
   id: string;
   name: string;
   price: number;
+  originalPrice?: number;
   image: string;
   rating?: number;
   reviews?: number;
   isSponsored?: boolean;
+  hasPromotion?: boolean;
 }
 
 const ProductCard = ({ id, name, price, image, rating = 0, reviews = 0, isSponsored = false }: ProductCardProps) => {
