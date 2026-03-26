@@ -52,7 +52,14 @@ const ProductCard = ({ id, name, price, originalPrice, image, rating = 0, review
               <span className="text-xs text-muted-foreground">({reviews})</span>
             </div>
           )}
-          <p className="mt-2 text-lg font-bold text-primary">{price.toLocaleString("pt-MZ")} MZN</p>
+          {hasPromotion && originalPrice ? (
+            <div className="mt-2 flex items-baseline gap-2">
+              <p className="text-lg font-bold text-destructive">{price.toLocaleString("pt-MZ")} MZN</p>
+              <p className="text-xs text-muted-foreground line-through">{originalPrice.toLocaleString("pt-MZ")}</p>
+            </div>
+          ) : (
+            <p className="mt-2 text-lg font-bold text-primary">{price.toLocaleString("pt-MZ")} MZN</p>
+          )}
         </div>
       </div>
     </Link>
