@@ -16,7 +16,7 @@ interface ProductCardProps {
   hasPromotion?: boolean;
 }
 
-const ProductCard = ({ id, name, price, image, rating = 0, reviews = 0, isSponsored = false }: ProductCardProps) => {
+const ProductCard = ({ id, name, price, originalPrice, image, rating = 0, reviews = 0, isSponsored = false, hasPromotion = false }: ProductCardProps) => {
   const { addItem } = useCart();
 
   const handleAdd = (e: React.MouseEvent) => {
