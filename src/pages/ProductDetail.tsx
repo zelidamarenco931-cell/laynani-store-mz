@@ -174,12 +174,12 @@ const ProductDetail = () => {
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
-      <main className="container flex-1 py-8">
-        <Button variant="ghost" size="sm" className="mb-4" asChild>
+      <main className="container flex-1 px-3 py-4 md:px-4 md:py-8">
+        <Button variant="ghost" size="sm" className="mb-2 md:mb-4" asChild>
           <Link to="/catalogo"><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Link>
         </Button>
 
-        <div className="grid gap-8 md:grid-cols-2">
+        <div className="grid gap-4 md:gap-8 md:grid-cols-2">
           {/* Gallery */}
           <div className="space-y-3">
             <div className="relative overflow-hidden rounded-2xl bg-muted aspect-[4/3] md:aspect-square">
