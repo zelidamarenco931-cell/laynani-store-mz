@@ -218,7 +218,7 @@ const ProductDetail = () => {
           </div>
 
           {/* Info */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 md:gap-4">
             <div>
               {product.categories?.name && (
                 <Badge variant="outline" className="mb-2">{product.categories.name}</Badge>
