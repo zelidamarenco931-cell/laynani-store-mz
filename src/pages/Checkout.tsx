@@ -23,6 +23,7 @@ const Checkout = () => {
   const { items, totalPrice, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [shippingRates, setShippingRates] = useState<any[]>([]);
   const [province, setProvince] = useState("");
   const [payment, setPayment] = useState("");
@@ -30,6 +31,14 @@ const Checkout = () => {
   const [formData, setFormData] = useState({ name: "", phone: "", city: "", bairro: "", reference: "" });
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  // Handle Stripe success redirect
+  useEffect(() => {
+    if (searchParams.get("success") === "true") {
+      clearCart();
+      setSubmitted(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     supabase.from("shipping_rates").select("*").order("province").then(({ data }) => {
