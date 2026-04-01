@@ -411,7 +411,7 @@ const ProductDetail = () => {
       </main>
 
       {/* Sticky mobile CTA */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-3 md:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-2 md:hidden shadow-lg">
         <div className="flex items-center gap-3">
           <div>
             {isPromoActive ? (
