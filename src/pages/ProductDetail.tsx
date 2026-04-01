@@ -172,7 +172,7 @@ const ProductDetail = () => {
   );
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col pb-16 md:pb-0">
       <Navbar />
       <main className="container flex-1 px-3 py-4 md:px-4 md:py-8">
         <Button variant="ghost" size="sm" className="mb-2 md:mb-4" asChild>
