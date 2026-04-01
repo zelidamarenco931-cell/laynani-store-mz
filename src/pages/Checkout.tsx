@@ -61,8 +61,6 @@ const Checkout = () => {
 
     setUploading(true);
 
-    const paymentMethodMap: Record<string, string> = { mpesa: "mpesa", emola: "mpesa", bank: "manual", paypal: "paypal" };
-
     // Check for affiliate ref
     let affiliateId: string | null = null;
     const refCode = localStorage.getItem("affiliate_ref");
@@ -71,18 +69,44 @@ const Checkout = () => {
       if (aff && aff.user_id !== user.id) affiliateId = aff.id;
     }
 
+    // Stripe payment flow
+    if (payment === "stripe") {
+      try {
+        const { data, error } = await supabase.functions.invoke("create-checkout", {
+          body: {
+            items: items.map(item => ({ name: item.name, price: item.price, quantity: item.quantity, image: item.image })),
+            shippingCost,
+            shippingAddress: { province, city: formData.city, bairro: formData.bairro, reference: formData.reference, name: formData.name, phone: formData.phone },
+            affiliateId,
+          },
+        });
+        if (error) throw error;
+        if (data?.url) {
+          window.location.href = data.url;
+          return;
+        }
+        throw new Error("No checkout URL returned");
+      } catch (err: any) {
+        toast.error("Erro ao processar pagamento: " + (err.message || "Tente novamente."));
+        setUploading(false);
+        return;
+      }
+    }
+
+    // Manual payment flow (M-Pesa, e-Mola, Bank)
+    const paymentMethodMap: Record<string, string> = { mpesa: "mpesa", emola: "mpesa", bank: "manual" };
+
     const { data: order, error } = await supabase.from("orders").insert({
       user_id: user.id,
       total_mzn: grandTotal,
       status: "pending" as const,
-      payment_method: paymentMethodMap[payment] as "mpesa" | "manual" | "paypal",
+      payment_method: paymentMethodMap[payment] as "mpesa" | "manual",
       shipping_address: { province, city: formData.city, bairro: formData.bairro, reference: formData.reference, name: formData.name, phone: formData.phone, payment_detail: payment },
       ...(affiliateId ? { affiliate_id: affiliateId } : {}),
     } as any).select().single();
 
     if (error || !order) { toast.error("Erro ao criar pedido."); setUploading(false); return; }
 
-    // Upload proof
     const proofUrl = await uploadProof(order.id);
     if (proofUrl) {
       await supabase.from("orders").update({ payment_proof_url: proofUrl }).eq("id", order.id);
@@ -96,7 +120,6 @@ const Checkout = () => {
     }));
     await supabase.from("order_items").insert(orderItems);
 
-    // Create affiliate commission if applicable
     if (affiliateId) {
       const { data: affData } = await supabase.from("affiliates").select("commission_rate").eq("id", affiliateId).single();
       const rate = affData?.commission_rate || 0.10;
