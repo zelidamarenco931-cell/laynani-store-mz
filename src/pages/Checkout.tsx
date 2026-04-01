@@ -10,13 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CreditCard, Smartphone, ArrowLeft, CheckCircle, Building2, Upload, ImageIcon } from "lucide-react";
+import { CreditCard, Smartphone, ArrowLeft, CheckCircle, Building2, Upload, ImageIcon, Loader2 } from "lucide-react";
 
 const paymentMethods = [
+  { id: "stripe", label: "Cartão (Visa/Mastercard)", icon: CreditCard, desc: "Pagamento seguro via Stripe" },
   { id: "mpesa", label: "M-Pesa", icon: Smartphone, desc: "Envie para 852506942 (Felizarda I.M)" },
   { id: "emola", label: "e-Mola", icon: Smartphone, desc: "Envie para 868214712 (Zelida Isac Marenço)" },
   { id: "bank", label: "Transferência BIM", icon: Building2, desc: "NIB: 000100000109942147557" },
-  { id: "paypal", label: "PayPal", icon: CreditCard, desc: "Conta PayPal" },
 ] as const;
 
 const Checkout = () => {
