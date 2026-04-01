@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useCart } from "@/contexts/CartContext";
@@ -10,19 +10,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CreditCard, Smartphone, ArrowLeft, CheckCircle, Building2, Upload, ImageIcon } from "lucide-react";
+import { CreditCard, Smartphone, ArrowLeft, CheckCircle, Building2, Upload, ImageIcon, Loader2 } from "lucide-react";
 
 const paymentMethods = [
+  { id: "stripe", label: "Cartão (Visa/Mastercard)", icon: CreditCard, desc: "Pagamento seguro via Stripe" },
   { id: "mpesa", label: "M-Pesa", icon: Smartphone, desc: "Envie para 852506942 (Felizarda I.M)" },
   { id: "emola", label: "e-Mola", icon: Smartphone, desc: "Envie para 868214712 (Zelida Isac Marenço)" },
   { id: "bank", label: "Transferência BIM", icon: Building2, desc: "NIB: 000100000109942147557" },
-  { id: "paypal", label: "PayPal", icon: CreditCard, desc: "Conta PayPal" },
 ] as const;
 
 const Checkout = () => {
   const { items, totalPrice, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [shippingRates, setShippingRates] = useState<any[]>([]);
   const [province, setProvince] = useState("");
   const [payment, setPayment] = useState("");
@@ -30,6 +31,14 @@ const Checkout = () => {
   const [formData, setFormData] = useState({ name: "", phone: "", city: "", bairro: "", reference: "" });
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  // Handle Stripe success redirect
+  useEffect(() => {
+    if (searchParams.get("success") === "true") {
+      clearCart();
+      setSubmitted(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     supabase.from("shipping_rates").select("*").order("province").then(({ data }) => {
@@ -61,8 +70,6 @@ const Checkout = () => {
 
     setUploading(true);
 
-    const paymentMethodMap: Record<string, string> = { mpesa: "mpesa", emola: "mpesa", bank: "manual", paypal: "paypal" };
-
     // Check for affiliate ref
     let affiliateId: string | null = null;
     const refCode = localStorage.getItem("affiliate_ref");
@@ -71,18 +78,44 @@ const Checkout = () => {
       if (aff && aff.user_id !== user.id) affiliateId = aff.id;
     }
 
+    // Stripe payment flow
+    if (payment === "stripe") {
+      try {
+        const { data, error } = await supabase.functions.invoke("create-checkout", {
+          body: {
+            items: items.map(item => ({ name: item.name, price: item.price, quantity: item.quantity, image: item.image })),
+            shippingCost,
+            shippingAddress: { province, city: formData.city, bairro: formData.bairro, reference: formData.reference, name: formData.name, phone: formData.phone },
+            affiliateId,
+          },
+        });
+        if (error) throw error;
+        if (data?.url) {
+          window.location.href = data.url;
+          return;
+        }
+        throw new Error("No checkout URL returned");
+      } catch (err: any) {
+        toast.error("Erro ao processar pagamento: " + (err.message || "Tente novamente."));
+        setUploading(false);
+        return;
+      }
+    }
+
+    // Manual payment flow (M-Pesa, e-Mola, Bank)
+    const paymentMethodMap: Record<string, string> = { mpesa: "mpesa", emola: "mpesa", bank: "manual" };
+
     const { data: order, error } = await supabase.from("orders").insert({
       user_id: user.id,
       total_mzn: grandTotal,
       status: "pending" as const,
-      payment_method: paymentMethodMap[payment] as "mpesa" | "manual" | "paypal",
+      payment_method: paymentMethodMap[payment] as "mpesa" | "manual",
       shipping_address: { province, city: formData.city, bairro: formData.bairro, reference: formData.reference, name: formData.name, phone: formData.phone, payment_detail: payment },
       ...(affiliateId ? { affiliate_id: affiliateId } : {}),
     } as any).select().single();
 
     if (error || !order) { toast.error("Erro ao criar pedido."); setUploading(false); return; }
 
-    // Upload proof
     const proofUrl = await uploadProof(order.id);
     if (proofUrl) {
       await supabase.from("orders").update({ payment_proof_url: proofUrl }).eq("id", order.id);
@@ -96,7 +129,6 @@ const Checkout = () => {
     }));
     await supabase.from("order_items").insert(orderItems);
 
-    // Create affiliate commission if applicable
     if (affiliateId) {
       const { data: affData } = await supabase.from("affiliates").select("commission_rate").eq("id", affiliateId).single();
       const rate = affData?.commission_rate || 0.10;
@@ -219,6 +251,13 @@ const Checkout = () => {
                     <p>Valor: <strong className="text-foreground">{grandTotal.toLocaleString("pt-MZ")} MZN</strong></p>
                   </div>
                   <p className="text-muted-foreground">Após a transferência, tire screenshot do comprovante e anexe abaixo.</p>
+                </div>
+              )}
+
+              {payment === "stripe" && (
+                <div className="rounded-lg bg-muted p-4 text-sm space-y-2">
+                  <p className="font-medium">💳 Pagamento por Cartão:</p>
+                  <p className="text-muted-foreground">Será redirecionado para a página segura do Stripe para completar o pagamento com Visa, Mastercard ou outro cartão.</p>
                 </div>
               )}
 
