@@ -182,7 +182,7 @@ const ProductDetail = () => {
         <div className="grid gap-8 md:grid-cols-2">
           {/* Gallery */}
           <div className="space-y-3">
-            <div className="relative overflow-hidden rounded-2xl bg-muted aspect-square">
+            <div className="relative overflow-hidden rounded-2xl bg-muted aspect-[4/3] md:aspect-square">
               <img src={images[currentImage]} alt={product.name} className="h-full w-full object-cover" />
               {images.length > 1 && (
                 <>
