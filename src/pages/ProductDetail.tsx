@@ -172,17 +172,17 @@ const ProductDetail = () => {
   );
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col pb-16 md:pb-0">
       <Navbar />
-      <main className="container flex-1 py-8">
-        <Button variant="ghost" size="sm" className="mb-4" asChild>
+      <main className="container flex-1 px-3 py-4 md:px-4 md:py-8">
+        <Button variant="ghost" size="sm" className="mb-2 md:mb-4" asChild>
           <Link to="/catalogo"><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Link>
         </Button>
 
-        <div className="grid gap-8 md:grid-cols-2">
+        <div className="grid gap-4 md:gap-8 md:grid-cols-2">
           {/* Gallery */}
           <div className="space-y-3">
-            <div className="relative overflow-hidden rounded-2xl bg-muted aspect-square">
+            <div className="relative overflow-hidden rounded-2xl bg-muted aspect-[4/3] md:aspect-square">
               <img src={images[currentImage]} alt={product.name} className="h-full w-full object-cover" />
               {images.length > 1 && (
                 <>
@@ -218,12 +218,12 @@ const ProductDetail = () => {
           </div>
 
           {/* Info */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 md:gap-4">
             <div>
               {product.categories?.name && (
                 <Badge variant="outline" className="mb-2">{product.categories.name}</Badge>
               )}
-              <h1 className="text-2xl font-bold md:text-3xl">{product.name}</h1>
+              <h1 className="text-xl font-bold md:text-3xl">{product.name}</h1>
             </div>
 
             {/* Rating */}
@@ -411,7 +411,7 @@ const ProductDetail = () => {
       </main>
 
       {/* Sticky mobile CTA */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-3 md:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-2 md:hidden shadow-lg">
         <div className="flex items-center gap-3">
           <div>
             {isPromoActive ? (
