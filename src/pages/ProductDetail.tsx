@@ -79,6 +79,10 @@ const ProductDetail = () => {
   const colors = useMemo(() => product?.color ? product.color.split(",").map((c: string) => c.trim()).filter(Boolean) : [], [product]);
   const sizes = useMemo(() => product?.size ? product.size.split(",").map((s: string) => s.trim()).filter(Boolean) : [], [product]);
 
+  useEffect(() => {
+    setCurrentImage(0);
+  }, [product?.id]);
+
   const isPromoActive = useMemo(() => {
     if (!product?.has_promotion || !product?.promotional_price_mzn) return false;
     const now = new Date();
@@ -172,7 +176,7 @@ const ProductDetail = () => {
   );
 
   return (
-    <div className="flex min-h-screen flex-col pb-16 md:pb-0">
+    <div className="flex min-h-screen flex-col pb-24 md:pb-0">
       <Navbar />
       <main className="container flex-1 px-3 py-4 md:px-4 md:py-8">
         <Button variant="ghost" size="sm" className="mb-2 md:mb-4" asChild>
@@ -182,19 +186,21 @@ const ProductDetail = () => {
         <div className="grid gap-4 md:gap-8 md:grid-cols-2">
           {/* Gallery */}
           <div className="space-y-3">
-            <div className="relative overflow-hidden rounded-2xl bg-muted aspect-[4/3] md:aspect-square">
-              <img src={images[currentImage]} alt={product.name} className="h-full w-full object-cover" />
+            <div className="relative flex aspect-square min-h-[280px] max-h-[68svh] items-center justify-center overflow-hidden rounded-2xl bg-muted md:max-h-none">
+              <img src={images[currentImage] || images[0]} alt={product.name} className="h-full w-full object-contain p-2 md:object-cover md:p-0" />
               {images.length > 1 && (
                 <>
                   <button onClick={() => setCurrentImage(i => (i - 1 + images.length) % images.length)}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-2 shadow-md backdrop-blur-sm hover:bg-background">
+                    aria-label="Imagem anterior"
+                    className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md backdrop-blur-sm transition hover:bg-background">
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                   <button onClick={() => setCurrentImage(i => (i + 1) % images.length)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-background/80 p-2 shadow-md backdrop-blur-sm hover:bg-background">
+                    aria-label="Próxima imagem"
+                    className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md backdrop-blur-sm transition hover:bg-background">
                     <ChevronRight className="h-5 w-5" />
                   </button>
-                  <span className="absolute bottom-3 right-3 rounded-full bg-background/80 px-2.5 py-1 text-xs font-medium backdrop-blur-sm">
+                  <span className="absolute bottom-3 right-3 z-10 rounded-full bg-background/90 px-2.5 py-1 text-xs font-medium backdrop-blur-sm">
                     {currentImage + 1}/{images.length}
                   </span>
                 </>
@@ -206,13 +212,24 @@ const ProductDetail = () => {
               )}
             </div>
             {images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory">
                 {images.map((img: string, i: number) => (
                   <button key={i} onClick={() => setCurrentImage(i)}
-                    className={`h-16 w-16 shrink-0 rounded-lg overflow-hidden border-2 transition-all ${i === currentImage ? "border-primary ring-2 ring-primary/20" : "border-transparent hover:border-primary/50"}`}>
-                    <img src={img} alt="" className="h-full w-full object-cover" loading="lazy" />
+                    aria-label={`Ver imagem ${i + 1}`}
+                    className={`h-14 w-14 shrink-0 snap-start rounded-lg overflow-hidden border-2 transition-all md:h-16 md:w-16 ${i === currentImage ? "border-primary ring-2 ring-primary/20" : "border-transparent hover:border-primary/50"}`}>
+                    <img src={img} alt={`Miniatura ${i + 1} de ${product.name}`} className="h-full w-full object-cover" loading="lazy" />
                   </button>
                 ))}
+              </div>
+            )}
+            {images.length > 1 && (
+              <div className="flex gap-2 sm:hidden">
+                <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => setCurrentImage(i => (i - 1 + images.length) % images.length)}>
+                  <ChevronLeft className="h-4 w-4" /> Anterior
+                </Button>
+                <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => setCurrentImage(i => (i + 1) % images.length)}>
+                  Próxima <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
             )}
           </div>
@@ -411,7 +428,7 @@ const ProductDetail = () => {
       </main>
 
       {/* Sticky mobile CTA */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background p-2 md:hidden shadow-lg">
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 p-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-lg backdrop-blur md:hidden">
         <div className="flex items-center gap-3">
           <div>
             {isPromoActive ? (

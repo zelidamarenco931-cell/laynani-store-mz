@@ -25,6 +25,12 @@ serve(async (req) => {
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated");
 
+    const requestOrigin =
+      req.headers.get("origin") ??
+      req.headers.get("referer")?.match(/^https?:\/\/[^/]+/)?.[0];
+
+    if (!requestOrigin) throw new Error("Missing request origin");
+
     const { items, shippingCost, shippingAddress, affiliateId } = await req.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -79,17 +85,19 @@ serve(async (req) => {
       line_items: lineItems,
       mode: "payment",
       metadata,
-      success_url: `${req.headers.get("origin")}/checkout?success=true`,
-      cancel_url: `${req.headers.get("origin")}/checkout`,
+      success_url: `${requestOrigin}/checkout?success=true`,
+      cancel_url: `${requestOrigin}/checkout`,
     });
 
-    return new Response(JSON.stringify({ url: session.url }), {
+    if (!session.url) throw new Error("Stripe did not return a checkout URL");
+
+    return new Response(JSON.stringify({ url: session.url, sessionId: session.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
   } catch (error) {
     console.error("Stripe checkout error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });

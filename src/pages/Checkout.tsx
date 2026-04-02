@@ -68,6 +68,16 @@ const Checkout = () => {
       return;
     }
 
+    const isEmbeddedPreview = window.self !== window.top;
+    const stripeCheckoutWindow = payment === "stripe"
+      ? window.open("", "_blank", "noopener,noreferrer")
+      : null;
+
+    if (stripeCheckoutWindow) {
+      stripeCheckoutWindow.document.write("<p style='font-family: Arial, sans-serif; padding: 24px;'>A redirecionar para o pagamento seguro...</p>");
+      stripeCheckoutWindow.document.close();
+    }
+
     setUploading(true);
 
     // Check for affiliate ref
@@ -90,12 +100,27 @@ const Checkout = () => {
           },
         });
         if (error) throw error;
-        if (data?.url) {
-          window.location.href = data.url;
+
+        const checkoutUrl = typeof data?.url === "string" ? data.url : "";
+        if (!checkoutUrl || !/^https?:\/\//.test(checkoutUrl)) {
+          throw new Error("URL de checkout inválida.");
+        }
+
+        if (stripeCheckoutWindow) {
+          stripeCheckoutWindow.location.replace(checkoutUrl);
+          toast.success("Abrimos o pagamento numa nova aba.");
+          setUploading(false);
           return;
         }
-        throw new Error("No checkout URL returned");
+
+        if (isEmbeddedPreview) {
+          throw new Error("O navegador bloqueou a abertura do checkout. Permita pop-ups e tente novamente.");
+        }
+
+        window.location.assign(checkoutUrl);
+        return;
       } catch (err: any) {
+        stripeCheckoutWindow?.close();
         toast.error("Erro ao processar pagamento: " + (err.message || "Tente novamente."));
         setUploading(false);
         return;
