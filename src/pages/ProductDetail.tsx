@@ -2,6 +2,7 @@ import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import ProductImageGallery from "@/components/ProductImageGallery";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import ProductCard from "@/components/ProductCard";
 import {
   Star, ShoppingCart, Truck, ArrowLeft, Minus, Plus, Heart, Share2,
-  ChevronLeft, ChevronRight, Zap, Clock, Check, Package,
+  Zap, Clock, Check, Package,
 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
@@ -32,7 +33,6 @@ const ProductDetail = () => {
   const [product, setProduct] = useState<any>(null);
   const [qty, setQty] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [currentImage, setCurrentImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [related, setRelated] = useState<any[]>([]);
@@ -78,10 +78,6 @@ const ProductDetail = () => {
   const images = useMemo(() => product?.images?.length ? product.images : ["/placeholder.svg"], [product]);
   const colors = useMemo(() => product?.color ? product.color.split(",").map((c: string) => c.trim()).filter(Boolean) : [], [product]);
   const sizes = useMemo(() => product?.size ? product.size.split(",").map((s: string) => s.trim()).filter(Boolean) : [], [product]);
-
-  useEffect(() => {
-    setCurrentImage(0);
-  }, [product?.id]);
 
   const isPromoActive = useMemo(() => {
     if (!product?.has_promotion || !product?.promotional_price_mzn) return false;
@@ -185,54 +181,12 @@ const ProductDetail = () => {
 
         <div className="grid gap-4 md:gap-8 md:grid-cols-2">
           {/* Gallery */}
-          <div className="space-y-3">
-            <div className="relative flex aspect-square min-h-[280px] max-h-[68svh] items-center justify-center overflow-hidden rounded-2xl bg-muted md:max-h-none">
-              <img src={images[currentImage] || images[0]} alt={product.name} className="h-full w-full object-contain p-2 md:object-cover md:p-0" />
-              {images.length > 1 && (
-                <>
-                  <button onClick={() => setCurrentImage(i => (i - 1 + images.length) % images.length)}
-                    aria-label="Imagem anterior"
-                    className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md backdrop-blur-sm transition hover:bg-background">
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                  <button onClick={() => setCurrentImage(i => (i + 1) % images.length)}
-                    aria-label="Próxima imagem"
-                    className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-background/90 p-2 shadow-md backdrop-blur-sm transition hover:bg-background">
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-                  <span className="absolute bottom-3 right-3 z-10 rounded-full bg-background/90 px-2.5 py-1 text-xs font-medium backdrop-blur-sm">
-                    {currentImage + 1}/{images.length}
-                  </span>
-                </>
-              )}
-              {isPromoActive && (
-                <Badge className="absolute left-3 top-3 bg-destructive text-destructive-foreground animate-pulse text-sm px-3 py-1">
-                  {discountPercent}% OFF
-                </Badge>
-              )}
-            </div>
-            {images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory">
-                {images.map((img: string, i: number) => (
-                  <button key={i} onClick={() => setCurrentImage(i)}
-                    aria-label={`Ver imagem ${i + 1}`}
-                    className={`h-14 w-14 shrink-0 snap-start rounded-lg overflow-hidden border-2 transition-all md:h-16 md:w-16 ${i === currentImage ? "border-primary ring-2 ring-primary/20" : "border-transparent hover:border-primary/50"}`}>
-                    <img src={img} alt={`Miniatura ${i + 1} de ${product.name}`} className="h-full w-full object-cover" loading="lazy" />
-                  </button>
-                ))}
-              </div>
-            )}
-            {images.length > 1 && (
-              <div className="flex gap-2 sm:hidden">
-                <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => setCurrentImage(i => (i - 1 + images.length) % images.length)}>
-                  <ChevronLeft className="h-4 w-4" /> Anterior
-                </Button>
-                <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => setCurrentImage(i => (i + 1) % images.length)}>
-                  Próxima <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
-          </div>
+          <ProductImageGallery
+            images={images}
+            productName={product.name}
+            isPromoActive={isPromoActive}
+            discountPercent={discountPercent}
+          />
 
           {/* Info */}
           <div className="flex flex-col gap-3 md:gap-4">
