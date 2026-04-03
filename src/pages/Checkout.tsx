@@ -69,7 +69,8 @@ const Checkout = () => {
     }
 
     const isEmbeddedPreview = window.self !== window.top;
-    const stripeCheckoutWindow = payment === "stripe"
+    const shouldUsePopupForStripe = payment === "stripe" && isEmbeddedPreview;
+    const stripeCheckoutWindow = shouldUsePopupForStripe
       ? window.open("", "_blank")
       : null;
 
@@ -140,7 +141,6 @@ const Checkout = () => {
           stripeCheckoutWindow.document.body.innerHTML = "<p style='font-family: Arial, sans-serif; padding: 24px;'>Não foi possível iniciar o pagamento. Volte à loja e tente novamente.</p>";
           setTimeout(() => stripeCheckoutWindow.close(), 1800);
         }
-        stripeCheckoutWindow?.close();
         toast.error("Erro ao processar pagamento: " + (err.message || "Tente novamente."));
         setUploading(false);
         return;
