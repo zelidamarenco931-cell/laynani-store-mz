@@ -77,59 +77,6 @@ const Checkout = () => {
       if (aff && aff.user_id !== user.id) affiliateId = aff.id;
     }
 
-    // Stripe payment flow
-    if (payment === "stripe") {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const accessToken = session?.access_token;
-
-        if (!accessToken) {
-          throw new Error("A sua sessão expirou. Faça login novamente para continuar.");
-        }
-
-        const { data, error } = await supabase.functions.invoke("create-checkout", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: {
-            items: items.map(item => ({ name: item.name, price: item.price, quantity: item.quantity, image: item.image })),
-            shippingCost,
-            shippingAddress: { province, city: formData.city, bairro: formData.bairro, reference: formData.reference, name: formData.name, phone: formData.phone },
-            affiliateId,
-            origin: window.location.origin,
-          },
-        });
-        if (error) throw error;
-
-        const checkoutUrl = typeof data?.url === "string" ? data.url : "";
-        if (!checkoutUrl || !/^https?:\/\//.test(checkoutUrl)) {
-          throw new Error("URL de checkout inválida.");
-        }
-
-        if (stripeCheckoutWindow) {
-          stripeCheckoutWindow.location.replace(checkoutUrl);
-          toast.success("Abrimos o pagamento numa nova aba.");
-          setUploading(false);
-          return;
-        }
-
-        if (isEmbeddedPreview) {
-          throw new Error("O navegador bloqueou a abertura do checkout. Permita pop-ups e tente novamente.");
-        }
-
-        window.location.assign(checkoutUrl);
-        return;
-      } catch (err: any) {
-        if (stripeCheckoutWindow && !stripeCheckoutWindow.closed) {
-          stripeCheckoutWindow.document.body.innerHTML = "<p style='font-family: Arial, sans-serif; padding: 24px;'>Não foi possível iniciar o pagamento. Volte à loja e tente novamente.</p>";
-          setTimeout(() => stripeCheckoutWindow.close(), 1800);
-        }
-        toast.error("Erro ao processar pagamento: " + (err.message || "Tente novamente."));
-        setUploading(false);
-        return;
-      }
-    }
-
     // Manual payment flow (M-Pesa, e-Mola, Bank)
     const paymentMethodMap: Record<string, string> = { mpesa: "mpesa", emola: "mpesa", bank: "manual" };
 
