@@ -10,10 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CreditCard, Smartphone, ArrowLeft, CheckCircle, Building2, Upload, ImageIcon, Loader2 } from "lucide-react";
+import { Smartphone, ArrowLeft, CheckCircle, Building2, Upload, ImageIcon, Loader2 } from "lucide-react";
 
 const paymentMethods = [
-  { id: "stripe", label: "Cartão (Visa/Mastercard)", icon: CreditCard, desc: "Pagamento seguro via Stripe" },
   { id: "mpesa", label: "M-Pesa", icon: Smartphone, desc: "Envie para 852506942 (Felizarda I.M)" },
   { id: "emola", label: "e-Mola", icon: Smartphone, desc: "Envie para 868214712 (Zelida Isac Marenço)" },
   { id: "bank", label: "Transferência BIM", icon: Building2, desc: "NIB: 000100000109942147557" },
@@ -32,7 +31,7 @@ const Checkout = () => {
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  // Handle Stripe success redirect
+  // Handle success redirect
   useEffect(() => {
     if (searchParams.get("success") === "true") {
       clearCart();
@@ -63,25 +62,9 @@ const Checkout = () => {
     e.preventDefault();
     if (!province || !payment) { toast.error("Preencha todos os campos obrigatórios."); return; }
     if (!user) { toast.error("Faça login para continuar."); navigate("/login"); return; }
-    if (["mpesa", "emola", "bank"].includes(payment) && !proofFile) {
+    if (!proofFile) {
       toast.error("Anexe o comprovante de pagamento.");
       return;
-    }
-
-    const isEmbeddedPreview = window.self !== window.top;
-    const shouldUsePopupForStripe = payment === "stripe" && isEmbeddedPreview;
-    const stripeCheckoutWindow = shouldUsePopupForStripe
-      ? window.open("", "_blank")
-      : null;
-
-    if (stripeCheckoutWindow) {
-      try {
-        stripeCheckoutWindow.opener = null;
-      } catch {
-        // ignore
-      }
-      stripeCheckoutWindow.document.write("<p style='font-family: Arial, sans-serif; padding: 24px;'>A redirecionar para o pagamento seguro...</p>");
-      stripeCheckoutWindow.document.close();
     }
 
     setUploading(true);
@@ -92,59 +75,6 @@ const Checkout = () => {
     if (refCode) {
       const { data: aff } = await supabase.from("affiliates").select("id, user_id").eq("affiliate_code", refCode).eq("status", "active").single();
       if (aff && aff.user_id !== user.id) affiliateId = aff.id;
-    }
-
-    // Stripe payment flow
-    if (payment === "stripe") {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const accessToken = session?.access_token;
-
-        if (!accessToken) {
-          throw new Error("A sua sessão expirou. Faça login novamente para continuar.");
-        }
-
-        const { data, error } = await supabase.functions.invoke("create-checkout", {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: {
-            items: items.map(item => ({ name: item.name, price: item.price, quantity: item.quantity, image: item.image })),
-            shippingCost,
-            shippingAddress: { province, city: formData.city, bairro: formData.bairro, reference: formData.reference, name: formData.name, phone: formData.phone },
-            affiliateId,
-            origin: window.location.origin,
-          },
-        });
-        if (error) throw error;
-
-        const checkoutUrl = typeof data?.url === "string" ? data.url : "";
-        if (!checkoutUrl || !/^https?:\/\//.test(checkoutUrl)) {
-          throw new Error("URL de checkout inválida.");
-        }
-
-        if (stripeCheckoutWindow) {
-          stripeCheckoutWindow.location.replace(checkoutUrl);
-          toast.success("Abrimos o pagamento numa nova aba.");
-          setUploading(false);
-          return;
-        }
-
-        if (isEmbeddedPreview) {
-          throw new Error("O navegador bloqueou a abertura do checkout. Permita pop-ups e tente novamente.");
-        }
-
-        window.location.assign(checkoutUrl);
-        return;
-      } catch (err: any) {
-        if (stripeCheckoutWindow && !stripeCheckoutWindow.closed) {
-          stripeCheckoutWindow.document.body.innerHTML = "<p style='font-family: Arial, sans-serif; padding: 24px;'>Não foi possível iniciar o pagamento. Volte à loja e tente novamente.</p>";
-          setTimeout(() => stripeCheckoutWindow.close(), 1800);
-        }
-        toast.error("Erro ao processar pagamento: " + (err.message || "Tente novamente."));
-        setUploading(false);
-        return;
-      }
     }
 
     // Manual payment flow (M-Pesa, e-Mola, Bank)
@@ -299,12 +229,6 @@ const Checkout = () => {
                 </div>
               )}
 
-              {payment === "stripe" && (
-                <div className="rounded-lg bg-muted p-4 text-sm space-y-2">
-                  <p className="font-medium">💳 Pagamento por Cartão:</p>
-                  <p className="text-muted-foreground">Será redirecionado para a página segura do Stripe para completar o pagamento com Visa, Mastercard ou outro cartão.</p>
-                </div>
-              )}
 
               {["mpesa", "emola", "bank"].includes(payment) && (
                 <div className="space-y-2">
