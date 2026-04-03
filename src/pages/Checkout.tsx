@@ -69,11 +69,17 @@ const Checkout = () => {
     }
 
     const isEmbeddedPreview = window.self !== window.top;
-    const stripeCheckoutWindow = payment === "stripe"
-      ? window.open("", "_blank", "noopener,noreferrer")
+    const shouldUsePopupForStripe = payment === "stripe" && isEmbeddedPreview;
+    const stripeCheckoutWindow = shouldUsePopupForStripe
+      ? window.open("", "_blank")
       : null;
 
     if (stripeCheckoutWindow) {
+      try {
+        stripeCheckoutWindow.opener = null;
+      } catch {
+        // ignore
+      }
       stripeCheckoutWindow.document.write("<p style='font-family: Arial, sans-serif; padding: 24px;'>A redirecionar para o pagamento seguro...</p>");
       stripeCheckoutWindow.document.close();
     }
@@ -91,12 +97,23 @@ const Checkout = () => {
     // Stripe payment flow
     if (payment === "stripe") {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+
+        if (!accessToken) {
+          throw new Error("A sua sessão expirou. Faça login novamente para continuar.");
+        }
+
         const { data, error } = await supabase.functions.invoke("create-checkout", {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
           body: {
             items: items.map(item => ({ name: item.name, price: item.price, quantity: item.quantity, image: item.image })),
             shippingCost,
             shippingAddress: { province, city: formData.city, bairro: formData.bairro, reference: formData.reference, name: formData.name, phone: formData.phone },
             affiliateId,
+            origin: window.location.origin,
           },
         });
         if (error) throw error;
@@ -120,7 +137,10 @@ const Checkout = () => {
         window.location.assign(checkoutUrl);
         return;
       } catch (err: any) {
-        stripeCheckoutWindow?.close();
+        if (stripeCheckoutWindow && !stripeCheckoutWindow.closed) {
+          stripeCheckoutWindow.document.body.innerHTML = "<p style='font-family: Arial, sans-serif; padding: 24px;'>Não foi possível iniciar o pagamento. Volte à loja e tente novamente.</p>";
+          setTimeout(() => stripeCheckoutWindow.close(), 1800);
+        }
         toast.error("Erro ao processar pagamento: " + (err.message || "Tente novamente."));
         setUploading(false);
         return;
