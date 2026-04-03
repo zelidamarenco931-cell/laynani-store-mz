@@ -229,12 +229,6 @@ const Checkout = () => {
                 </div>
               )}
 
-              {payment === "stripe" && (
-                <div className="rounded-lg bg-muted p-4 text-sm space-y-2">
-                  <p className="font-medium">💳 Pagamento por Cartão:</p>
-                  <p className="text-muted-foreground">Será redirecionado para a página segura do Stripe para completar o pagamento com Visa, Mastercard ou outro cartão.</p>
-                </div>
-              )}
 
               {["mpesa", "emola", "bank"].includes(payment) && (
                 <div className="space-y-2">
