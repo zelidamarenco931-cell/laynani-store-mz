@@ -67,22 +67,6 @@ const Checkout = () => {
       return;
     }
 
-    const isEmbeddedPreview = window.self !== window.top;
-    const shouldUsePopupForStripe = payment === "stripe" && isEmbeddedPreview;
-    const stripeCheckoutWindow = shouldUsePopupForStripe
-      ? window.open("", "_blank")
-      : null;
-
-    if (stripeCheckoutWindow) {
-      try {
-        stripeCheckoutWindow.opener = null;
-      } catch {
-        // ignore
-      }
-      stripeCheckoutWindow.document.write("<p style='font-family: Arial, sans-serif; padding: 24px;'>A redirecionar para o pagamento seguro...</p>");
-      stripeCheckoutWindow.document.close();
-    }
-
     setUploading(true);
 
     // Check for affiliate ref
