@@ -194,7 +194,7 @@ const ProductDetail = () => {
               {product.categories?.name && (
                 <Badge variant="outline" className="mb-2">{product.categories.name}</Badge>
               )}
-              <h1 className="text-xl font-bold md:text-3xl">{product.name}</h1>
+              <h1 className="text-lg font-bold leading-tight sm:text-xl md:text-3xl">{product.name}</h1>
             </div>
 
             {/* Rating */}
