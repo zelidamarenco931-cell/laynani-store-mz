@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { CreditCard, Smartphone, ArrowLeft, CheckCircle, Building2, Upload, ImageIcon, Loader2 } from "lucide-react";
+import { Smartphone, ArrowLeft, CheckCircle, Building2, Upload, ImageIcon, Loader2 } from "lucide-react";
 
 const paymentMethods = [
   { id: "stripe", label: "Cartão (Visa/Mastercard)", icon: CreditCard, desc: "Pagamento seguro via Stripe" },
