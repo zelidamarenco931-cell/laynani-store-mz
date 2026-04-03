@@ -229,7 +229,7 @@ const ProductDetail = () => {
               <p className="text-xs text-muted-foreground">ou 12x de {(finalPrice / 12).toFixed(0)} MZN</p>
             </div>
 
-            <p className="text-muted-foreground">{product.description}</p>
+            <p className="text-sm text-muted-foreground sm:text-base break-words">{product.description}</p>
 
             {/* Colors */}
             {colors.length > 0 && (
