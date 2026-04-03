@@ -196,8 +196,8 @@ const ProductImageGallery = ({ images, productName, isPromoActive, discountPerce
   const isZoomed = zoomState.index === activeIndex;
 
   return (
-    <div className="space-y-3">
-      <div className="w-full max-w-full overflow-hidden">
+    <div className="w-full min-w-0 space-y-3">
+      <div className="w-full min-w-0 overflow-hidden">
         <div className="relative w-full touch-pan-y">
           <div
             ref={trackRef}

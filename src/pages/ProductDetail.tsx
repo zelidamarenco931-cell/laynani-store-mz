@@ -179,7 +179,7 @@ const ProductDetail = () => {
           <Link to="/catalogo"><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Link>
         </Button>
 
-        <div className="grid gap-4 md:gap-8 md:grid-cols-2">
+        <div className="grid gap-4 md:gap-8 md:grid-cols-2 overflow-hidden">
           {/* Gallery */}
           <ProductImageGallery
             images={images}
@@ -194,7 +194,7 @@ const ProductDetail = () => {
               {product.categories?.name && (
                 <Badge variant="outline" className="mb-2">{product.categories.name}</Badge>
               )}
-              <h1 className="text-xl font-bold md:text-3xl">{product.name}</h1>
+              <h1 className="text-lg font-bold leading-tight sm:text-xl md:text-3xl">{product.name}</h1>
             </div>
 
             {/* Rating */}
@@ -213,12 +213,12 @@ const ProductDetail = () => {
             {/* Price */}
             <div className="space-y-1">
               {isPromoActive ? (
-                <div className="flex items-baseline gap-3">
-                  <p className="text-3xl font-extrabold text-destructive">{finalPrice.toLocaleString("pt-MZ")} MZN</p>
-                  <p className="text-lg text-muted-foreground line-through">{Number(product.price_mzn).toLocaleString("pt-MZ")} MZN</p>
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <p className="text-2xl font-extrabold text-destructive sm:text-3xl">{finalPrice.toLocaleString("pt-MZ")} MZN</p>
+                  <p className="text-sm text-muted-foreground line-through sm:text-lg">{Number(product.price_mzn).toLocaleString("pt-MZ")} MZN</p>
                 </div>
               ) : (
-                <p className="text-3xl font-extrabold text-primary">{finalPrice.toLocaleString("pt-MZ")} MZN</p>
+                <p className="text-2xl font-extrabold text-primary sm:text-3xl">{finalPrice.toLocaleString("pt-MZ")} MZN</p>
               )}
               {promoTimeLeft && (
                 <div className="flex items-center gap-1.5 text-sm text-destructive font-medium">
@@ -229,7 +229,7 @@ const ProductDetail = () => {
               <p className="text-xs text-muted-foreground">ou 12x de {(finalPrice / 12).toFixed(0)} MZN</p>
             </div>
 
-            <p className="text-muted-foreground">{product.description}</p>
+            <p className="text-sm text-muted-foreground sm:text-base break-words">{product.description}</p>
 
             {/* Colors */}
             {colors.length > 0 && (
@@ -294,26 +294,26 @@ const ProductDetail = () => {
             </div>
 
             {/* Quantity + Add to cart */}
-            <div className="flex items-center gap-3 pt-2">
-              <div className="flex items-center rounded-lg border">
-                <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setQty(Math.max(1, qty - 1))}><Minus className="h-4 w-4" /></Button>
-                <span className="w-10 text-center font-medium">{qty}</span>
-                <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setQty(qty + 1)}><Plus className="h-4 w-4" /></Button>
+            <div className="flex items-center gap-2 pt-2 sm:gap-3">
+              <div className="flex shrink-0 items-center rounded-lg border">
+                <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-10 sm:w-10" onClick={() => setQty(Math.max(1, qty - 1))}><Minus className="h-4 w-4" /></Button>
+                <span className="w-8 text-center text-sm font-medium sm:w-10">{qty}</span>
+                <Button variant="ghost" size="icon" className="h-9 w-9 sm:h-10 sm:w-10" onClick={() => setQty(qty + 1)}><Plus className="h-4 w-4" /></Button>
               </div>
-              <Button size="lg" className="flex-1" onClick={handleAdd} disabled={product.stock === 0}>
-                <ShoppingCart className="mr-2 h-4 w-4" /> Adicionar ao Carrinho
+              <Button size="default" className="min-w-0 flex-1 text-sm sm:text-base" onClick={handleAdd} disabled={product.stock === 0}>
+                <ShoppingCart className="mr-1.5 h-4 w-4 shrink-0" /> <span className="truncate">Adicionar ao Carrinho</span>
               </Button>
             </div>
 
             {/* Buy now + Favorite + Share */}
             <div className="flex gap-2">
-              <Button variant="outline" size="lg" className="flex-1" onClick={() => { handleAdd(); window.location.href = "/checkout"; }} disabled={product.stock === 0}>
-                <Zap className="mr-2 h-4 w-4" /> Comprar Agora
+              <Button variant="outline" className="min-w-0 flex-1 text-sm sm:text-base" onClick={() => { handleAdd(); window.location.href = "/checkout"; }} disabled={product.stock === 0}>
+                <Zap className="mr-1.5 h-4 w-4 shrink-0" /> <span className="truncate">Comprar Agora</span>
               </Button>
-              <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => { setIsFavorite(!isFavorite); toast.success(isFavorite ? "Removido dos favoritos" : "Salvo nos favoritos!"); }}>
+              <Button variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => { setIsFavorite(!isFavorite); toast.success(isFavorite ? "Removido dos favoritos" : "Salvo nos favoritos!"); }}>
                 <Heart className={`h-5 w-5 ${isFavorite ? "fill-destructive text-destructive" : ""}`} />
               </Button>
-              <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => handleShare("whatsapp")}>
+              <Button variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => handleShare("whatsapp")}>
                 <Share2 className="h-5 w-5" />
               </Button>
             </div>
