@@ -213,12 +213,12 @@ const ProductDetail = () => {
             {/* Price */}
             <div className="space-y-1">
               {isPromoActive ? (
-                <div className="flex items-baseline gap-3">
-                  <p className="text-3xl font-extrabold text-destructive">{finalPrice.toLocaleString("pt-MZ")} MZN</p>
-                  <p className="text-lg text-muted-foreground line-through">{Number(product.price_mzn).toLocaleString("pt-MZ")} MZN</p>
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <p className="text-2xl font-extrabold text-destructive sm:text-3xl">{finalPrice.toLocaleString("pt-MZ")} MZN</p>
+                  <p className="text-sm text-muted-foreground line-through sm:text-lg">{Number(product.price_mzn).toLocaleString("pt-MZ")} MZN</p>
                 </div>
               ) : (
-                <p className="text-3xl font-extrabold text-primary">{finalPrice.toLocaleString("pt-MZ")} MZN</p>
+                <p className="text-2xl font-extrabold text-primary sm:text-3xl">{finalPrice.toLocaleString("pt-MZ")} MZN</p>
               )}
               {promoTimeLeft && (
                 <div className="flex items-center gap-1.5 text-sm text-destructive font-medium">
