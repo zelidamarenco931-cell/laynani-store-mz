@@ -62,7 +62,7 @@ const Checkout = () => {
     e.preventDefault();
     if (!province || !payment) { toast.error("Preencha todos os campos obrigatórios."); return; }
     if (!user) { toast.error("Faça login para continuar."); navigate("/login"); return; }
-    if (["mpesa", "emola", "bank"].includes(payment) && !proofFile) {
+    if (!proofFile) {
       toast.error("Anexe o comprovante de pagamento.");
       return;
     }
