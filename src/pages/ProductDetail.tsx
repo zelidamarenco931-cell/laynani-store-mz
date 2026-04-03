@@ -179,7 +179,7 @@ const ProductDetail = () => {
           <Link to="/catalogo"><ArrowLeft className="mr-2 h-4 w-4" /> Voltar</Link>
         </Button>
 
-        <div className="grid gap-4 md:gap-8 md:grid-cols-2">
+        <div className="grid gap-4 md:gap-8 md:grid-cols-2 overflow-hidden">
           {/* Gallery */}
           <ProductImageGallery
             images={images}
