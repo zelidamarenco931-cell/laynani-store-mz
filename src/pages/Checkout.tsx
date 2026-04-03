@@ -31,7 +31,7 @@ const Checkout = () => {
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  // Handle Stripe success redirect
+  // Handle success redirect
   useEffect(() => {
     if (searchParams.get("success") === "true") {
       clearCart();
