@@ -64,6 +64,7 @@ const App = () => (
                 <Route path="/conta" element={<Account />} />
                 <Route path="/afiliados" element={<AffiliateJoin />} />
                 <Route path="/afiliados/painel" element={<AffiliateDashboard />} />
+                <Route path="/pedido-sucesso" element={<OrderSuccess />} />
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="pedidos" element={<AdminOrders />} />
