@@ -30,6 +30,8 @@ const AdminMarketing = lazy(() => import("./pages/admin/AdminMarketing"));
 const AdminAffiliates = lazy(() => import("./pages/admin/AdminAffiliates"));
 const AffiliateJoin = lazy(() => import("./pages/AffiliateJoin"));
 const AffiliateDashboard = lazy(() => import("./pages/AffiliateDashboard"));
+const OrderSuccess = lazy(() => import("./pages/OrderSuccess"));
+const AdminCustomers = lazy(() => import("./pages/admin/AdminCustomers"));
 
 const queryClient = new QueryClient();
 
