@@ -122,20 +122,7 @@ const Checkout = () => {
     navigate(`/pedido-sucesso?order=${order.id}`);
   };
 
-  if (submitted) return (
-    <div className="flex min-h-screen flex-col">
-      <Navbar />
-      <main className="container flex flex-1 flex-col items-center justify-center gap-4 py-20">
-        <CheckCircle className="h-20 w-20 text-primary" />
-        <h2 className="text-2xl font-bold">Pedido Confirmado!</h2>
-        <p className="text-center text-muted-foreground max-w-md">
-          O seu comprovante foi enviado. O administrador irá verificar e confirmar o pagamento em breve.
-        </p>
-        <Button asChild><Link to="/conta">Ver Meus Pedidos</Link></Button>
-      </main>
-      <Footer />
-    </div>
-  );
+  if (submitted) return null;
 
   if (items.length === 0) return (
     <div className="flex min-h-screen flex-col">
