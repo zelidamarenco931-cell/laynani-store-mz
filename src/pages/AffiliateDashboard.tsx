@@ -66,16 +66,24 @@ const AffiliateDashboard = () => {
     toast.success("Link copiado!");
   };
 
-  const shareWhatsApp = () => {
-    const link = generateLink();
-    if (!link) return;
-    window.open(`https://wa.me/?text=${encodeURIComponent("Confira este produto na Laynani Store! " + link)}`, "_blank");
-  };
-
   const shareFacebook = () => {
     const link = generateLink();
     if (!link) return;
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`, "_blank");
+  };
+
+  const shareInstagram = () => {
+    const link = generateLink();
+    if (!link) return;
+    navigator.clipboard.writeText("Confira este produto na Laynani Store! " + link);
+    toast.success("Link copiado! Cole no seu Instagram.");
+  };
+
+  const shareTikTok = () => {
+    const link = generateLink();
+    if (!link) return;
+    navigator.clipboard.writeText("Confira este produto na Laynani Store! " + link);
+    toast.success("Link copiado! Cole no seu TikTok.");
   };
 
   const pendingCommission = commissions.filter((c) => c.status === "pending").reduce((s, c) => s + Number(c.amount_mzn), 0);
