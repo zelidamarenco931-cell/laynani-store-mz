@@ -28,7 +28,9 @@ const AffiliateJoin = () => {
     const { error } = await supabase.from("affiliates").insert({
       user_id: user.id,
       affiliate_code: code,
-      whatsapp: form.whatsapp,
+      facebook: form.facebook || null,
+      instagram: form.instagram || null,
+      tiktok: form.tiktok || null,
       reason: form.reason,
       status: "pending",
     } as any);
