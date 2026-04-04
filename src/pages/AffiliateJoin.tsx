@@ -20,7 +20,7 @@ const AffiliateJoin = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) { toast.error("Faça login primeiro."); navigate("/login"); return; }
-    if (!form.name || !form.whatsapp) { toast.error("Preencha todos os campos obrigatórios."); return; }
+    if (!form.name) { toast.error("Preencha o nome."); return; }
 
     setSubmitting(true);
     const code = "LAY" + Math.random().toString(36).substring(2, 8).toUpperCase();
