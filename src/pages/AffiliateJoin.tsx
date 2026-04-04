@@ -94,7 +94,9 @@ const AffiliateJoin = () => {
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div><Label>Nome Completo *</Label><Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-              <div><Label>WhatsApp *</Label><Input required value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} placeholder="+258 8X XXX XXXX" /></div>
+              <div><Label>Facebook</Label><Input value={form.facebook} onChange={(e) => setForm({ ...form, facebook: e.target.value })} placeholder="Link do seu perfil (opcional)" /></div>
+              <div><Label>Instagram</Label><Input value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} placeholder="@seuuser (opcional)" /></div>
+              <div><Label>TikTok</Label><Input value={form.tiktok} onChange={(e) => setForm({ ...form, tiktok: e.target.value })} placeholder="@seuuser (opcional)" /></div>
               <div><Label>Por que quer ser afiliado?</Label><Input value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Conte-nos a sua motivação (opcional)" /></div>
               <Button type="submit" className="w-full" disabled={!user || submitting}>
                 {submitting ? "Enviando..." : "Candidatar-se"}

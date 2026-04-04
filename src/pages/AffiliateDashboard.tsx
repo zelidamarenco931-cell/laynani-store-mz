@@ -190,10 +190,11 @@ const AffiliateDashboard = () => {
             {selectedProduct && (
               <div className="space-y-3">
                 <Input readOnly value={generateLink()} className="text-xs bg-muted" />
-                <div className="flex gap-2">
-                  <Button onClick={copyLink} size="sm" className="flex-1"><Copy className="mr-2 h-4 w-4" /> Copiar</Button>
-                  <Button onClick={shareWhatsApp} size="sm" variant="outline" className="flex-1">WhatsApp</Button>
-                  <Button onClick={shareFacebook} size="sm" variant="outline" className="flex-1">Facebook</Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button onClick={copyLink} size="sm"><Copy className="mr-1 h-4 w-4" /> Copiar</Button>
+                  <Button onClick={shareFacebook} size="sm" variant="outline">Facebook</Button>
+                  <Button onClick={shareInstagram} size="sm" variant="outline">Instagram</Button>
+                  <Button onClick={shareTikTok} size="sm" variant="outline">TikTok</Button>
                 </div>
               </div>
             )}

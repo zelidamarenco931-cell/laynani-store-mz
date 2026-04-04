@@ -12,6 +12,7 @@ const adminLinks = [
   { label: "Categorias", href: "/admin/categorias", icon: FolderOpen },
   { label: "Marketing", href: "/admin/marketing", icon: Megaphone },
   { label: "Afiliados", href: "/admin/afiliados", icon: Users },
+  { label: "Clientes", href: "/admin/clientes", icon: UserCheck },
   { label: "Financeiro", href: "/admin/financeiro", icon: DollarSign },
   { label: "Configurações", href: "/admin/configuracoes", icon: Settings },
 ];

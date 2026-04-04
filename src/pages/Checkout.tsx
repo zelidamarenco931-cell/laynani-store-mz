@@ -117,9 +117,9 @@ const Checkout = () => {
     }
 
     setUploading(false);
-    setSubmitted(true);
     clearCart();
     toast.success("Pedido realizado com sucesso!");
+    navigate(`/pedido-sucesso?order=${order.id}`);
   };
 
   if (submitted) return (

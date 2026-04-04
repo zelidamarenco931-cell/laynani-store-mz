@@ -79,7 +79,7 @@ const AdminAffiliates = () => {
                 <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4">
                   <div>
                     <p className="font-medium">Código: <span className="text-primary">{a.affiliate_code}</span></p>
-                    <p className="text-xs text-muted-foreground">WhatsApp: {a.whatsapp || "—"} • Comissão: {(Number(a.commission_rate) * 100).toFixed(0)}%</p>
+                    <p className="text-xs text-muted-foreground">FB: {(a as any).facebook || "—"} • IG: {(a as any).instagram || "—"} • TT: {(a as any).tiktok || "—"} • Comissão: {(Number(a.commission_rate) * 100).toFixed(0)}%</p>
                     {a.reason && <p className="text-xs text-muted-foreground mt-1">Motivo: {a.reason}</p>}
                     <p className="text-xs text-muted-foreground">Inscrito em: {new Date(a.joined_at).toLocaleDateString("pt-MZ")}</p>
                   </div>
