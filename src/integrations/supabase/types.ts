@@ -199,32 +199,38 @@ export type Database = {
         Row: {
           affiliate_code: string
           commission_rate: number
+          facebook: string | null
           id: string
+          instagram: string | null
           joined_at: string
           reason: string | null
           status: string
+          tiktok: string | null
           user_id: string
-          whatsapp: string | null
         }
         Insert: {
           affiliate_code: string
           commission_rate?: number
+          facebook?: string | null
           id?: string
+          instagram?: string | null
           joined_at?: string
           reason?: string | null
           status?: string
+          tiktok?: string | null
           user_id: string
-          whatsapp?: string | null
         }
         Update: {
           affiliate_code?: string
           commission_rate?: number
+          facebook?: string | null
           id?: string
+          instagram?: string | null
           joined_at?: string
           reason?: string | null
           status?: string
+          tiktok?: string | null
           user_id?: string
-          whatsapp?: string | null
         }
         Relationships: []
       }

@@ -66,16 +66,24 @@ const AffiliateDashboard = () => {
     toast.success("Link copiado!");
   };
 
-  const shareWhatsApp = () => {
-    const link = generateLink();
-    if (!link) return;
-    window.open(`https://wa.me/?text=${encodeURIComponent("Confira este produto na Laynani Store! " + link)}`, "_blank");
-  };
-
   const shareFacebook = () => {
     const link = generateLink();
     if (!link) return;
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`, "_blank");
+  };
+
+  const shareInstagram = () => {
+    const link = generateLink();
+    if (!link) return;
+    navigator.clipboard.writeText("Confira este produto na Laynani Store! " + link);
+    toast.success("Link copiado! Cole no seu Instagram.");
+  };
+
+  const shareTikTok = () => {
+    const link = generateLink();
+    if (!link) return;
+    navigator.clipboard.writeText("Confira este produto na Laynani Store! " + link);
+    toast.success("Link copiado! Cole no seu TikTok.");
   };
 
   const pendingCommission = commissions.filter((c) => c.status === "pending").reduce((s, c) => s + Number(c.amount_mzn), 0);
@@ -182,10 +190,11 @@ const AffiliateDashboard = () => {
             {selectedProduct && (
               <div className="space-y-3">
                 <Input readOnly value={generateLink()} className="text-xs bg-muted" />
-                <div className="flex gap-2">
-                  <Button onClick={copyLink} size="sm" className="flex-1"><Copy className="mr-2 h-4 w-4" /> Copiar</Button>
-                  <Button onClick={shareWhatsApp} size="sm" variant="outline" className="flex-1">WhatsApp</Button>
-                  <Button onClick={shareFacebook} size="sm" variant="outline" className="flex-1">Facebook</Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button onClick={copyLink} size="sm"><Copy className="mr-1 h-4 w-4" /> Copiar</Button>
+                  <Button onClick={shareFacebook} size="sm" variant="outline">Facebook</Button>
+                  <Button onClick={shareInstagram} size="sm" variant="outline">Instagram</Button>
+                  <Button onClick={shareTikTok} size="sm" variant="outline">TikTok</Button>
                 </div>
               </div>
             )}

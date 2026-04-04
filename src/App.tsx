@@ -30,6 +30,8 @@ const AdminMarketing = lazy(() => import("./pages/admin/AdminMarketing"));
 const AdminAffiliates = lazy(() => import("./pages/admin/AdminAffiliates"));
 const AffiliateJoin = lazy(() => import("./pages/AffiliateJoin"));
 const AffiliateDashboard = lazy(() => import("./pages/AffiliateDashboard"));
+const OrderSuccess = lazy(() => import("./pages/OrderSuccess"));
+const AdminCustomers = lazy(() => import("./pages/admin/AdminCustomers"));
 
 const queryClient = new QueryClient();
 
@@ -62,6 +64,7 @@ const App = () => (
                 <Route path="/conta" element={<Account />} />
                 <Route path="/afiliados" element={<AffiliateJoin />} />
                 <Route path="/afiliados/painel" element={<AffiliateDashboard />} />
+                <Route path="/pedido-sucesso" element={<OrderSuccess />} />
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="pedidos" element={<AdminOrders />} />
@@ -69,6 +72,7 @@ const App = () => (
                   <Route path="categorias" element={<AdminCategories />} />
                   <Route path="marketing" element={<AdminMarketing />} />
                   <Route path="afiliados" element={<AdminAffiliates />} />
+                  <Route path="clientes" element={<AdminCustomers />} />
                   <Route path="financeiro" element={<AdminFinancial />} />
                   <Route path="configuracoes" element={<AdminSettings />} />
                 </Route>

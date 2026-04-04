@@ -13,14 +13,14 @@ import { Users, TrendingUp, DollarSign, Share2, CheckCircle } from "lucide-react
 const AffiliateJoin = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", whatsapp: "", reason: "" });
+  const [form, setForm] = useState({ name: "", facebook: "", instagram: "", tiktok: "", reason: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) { toast.error("Faça login primeiro."); navigate("/login"); return; }
-    if (!form.name || !form.whatsapp) { toast.error("Preencha todos os campos obrigatórios."); return; }
+    if (!form.name) { toast.error("Preencha o nome."); return; }
 
     setSubmitting(true);
     const code = "LAY" + Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -28,7 +28,9 @@ const AffiliateJoin = () => {
     const { error } = await supabase.from("affiliates").insert({
       user_id: user.id,
       affiliate_code: code,
-      whatsapp: form.whatsapp,
+      facebook: form.facebook || null,
+      instagram: form.instagram || null,
+      tiktok: form.tiktok || null,
       reason: form.reason,
       status: "pending",
     } as any);
@@ -92,7 +94,9 @@ const AffiliateJoin = () => {
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div><Label>Nome Completo *</Label><Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-              <div><Label>WhatsApp *</Label><Input required value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} placeholder="+258 8X XXX XXXX" /></div>
+              <div><Label>Facebook</Label><Input value={form.facebook} onChange={(e) => setForm({ ...form, facebook: e.target.value })} placeholder="Link do seu perfil (opcional)" /></div>
+              <div><Label>Instagram</Label><Input value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} placeholder="@seuuser (opcional)" /></div>
+              <div><Label>TikTok</Label><Input value={form.tiktok} onChange={(e) => setForm({ ...form, tiktok: e.target.value })} placeholder="@seuuser (opcional)" /></div>
               <div><Label>Por que quer ser afiliado?</Label><Input value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder="Conte-nos a sua motivação (opcional)" /></div>
               <Button type="submit" className="w-full" disabled={!user || submitting}>
                 {submitting ? "Enviando..." : "Candidatar-se"}
