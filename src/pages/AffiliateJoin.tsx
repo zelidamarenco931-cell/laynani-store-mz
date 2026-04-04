@@ -13,7 +13,7 @@ import { Users, TrendingUp, DollarSign, Share2, CheckCircle } from "lucide-react
 const AffiliateJoin = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", whatsapp: "", reason: "" });
+  const [form, setForm] = useState({ name: "", facebook: "", instagram: "", tiktok: "", reason: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
