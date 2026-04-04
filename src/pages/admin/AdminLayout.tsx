@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, ShoppingBag, Package, DollarSign, Settings, ArrowLeft, Menu, FolderOpen, Megaphone, Users } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, Package, DollarSign, Settings, ArrowLeft, Menu, FolderOpen, Megaphone, Users, UserCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
