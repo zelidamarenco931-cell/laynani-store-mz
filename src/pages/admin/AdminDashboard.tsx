@@ -74,19 +74,19 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <h1 className="text-2xl font-bold">Dashboard</h1>
+    <div className="space-y-6 overflow-x-hidden">
+      <h1 className="text-xl sm:text-2xl font-bold">Dashboard</h1>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
         {cards.map((c) => (
-          <Card key={c.title} className="shadow-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-medium text-muted-foreground">{c.title}</CardTitle>
-              <c.icon className={`h-4 w-4 ${c.color}`} />
+          <Card key={c.title} className="shadow-card min-w-0">
+            <CardHeader className="flex flex-row items-center justify-between pb-1 px-3 pt-3">
+              <CardTitle className="text-[11px] sm:text-xs font-medium text-muted-foreground truncate pr-1">{c.title}</CardTitle>
+              <c.icon className={`h-4 w-4 shrink-0 ${c.color}`} />
             </CardHeader>
-            <CardContent>
-              <p className="text-xl font-bold">{c.value}</p>
+            <CardContent className="px-3 pb-3">
+              <p className="text-base sm:text-xl font-bold truncate">{c.value}</p>
             </CardContent>
           </Card>
         ))}
@@ -95,16 +95,16 @@ const AdminDashboard = () => {
       {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Monthly Sales Bar Chart */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="text-base">Vendas Mensais (Aceites)</CardTitle>
+        <Card className="shadow-card min-w-0 overflow-hidden">
+          <CardHeader className="px-3 sm:px-6">
+            <CardTitle className="text-sm sm:text-base">Vendas Mensais (Aceites)</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-[280px] w-full">
-              <BarChart data={monthlyData}>
+          <CardContent className="px-1 sm:px-6">
+            <ChartContainer config={chartConfig} className="h-[220px] sm:h-[280px] w-full">
+              <BarChart data={monthlyData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} width={40} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="vendas" fill="var(--color-vendas)" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -113,15 +113,26 @@ const AdminDashboard = () => {
         </Card>
 
         {/* Order Status Pie Chart */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="text-base">Estado dos Pedidos</CardTitle>
+        <Card className="shadow-card min-w-0 overflow-hidden">
+          <CardHeader className="px-3 sm:px-6">
+            <CardTitle className="text-sm sm:text-base">Estado dos Pedidos</CardTitle>
           </CardHeader>
-          <CardContent className="flex items-center justify-center">
-            <div className="h-[280px] w-full">
+          <CardContent className="flex items-center justify-center px-1 sm:px-6">
+            <div className="h-[220px] sm:h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={statusData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={4} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                  <Pie
+                    data={statusData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={70}
+                    paddingAngle={4}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}
+                    fontSize={10}
+                  >
                     {statusData.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
                     ))}
