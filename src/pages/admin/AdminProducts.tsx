@@ -47,7 +47,7 @@ const emptyForm: ProductForm = {
   name: "", description: "", price_mzn: "", promotional_price_mzn: "",
   stock: "0", category_id: "", sku: "", status: "active",
   has_promotion: false, promotion_start_date: "", promotion_end_date: "",
-  delivery_time_min: "3", delivery_time_max: "15", origin: "local",
+  delivery_time_min: "7", delivery_time_max: "20", origin: "local",
   meta_title: "", meta_description: "", tags: "", weight: "",
 };
 
@@ -98,7 +98,7 @@ const AdminProducts = () => {
       stock: String(p.stock), category_id: p.category_id || "", sku: p.sku || "",
       status: p.status || "active", has_promotion: p.has_promotion || false,
       promotion_start_date: p.promotion_start_date || "", promotion_end_date: p.promotion_end_date || "",
-      delivery_time_min: String(p.delivery_time_min || 3), delivery_time_max: String(p.delivery_time_max || 15),
+      delivery_time_min: String(p.delivery_time_min || 7), delivery_time_max: String(p.delivery_time_max || 20),
       origin: p.origin || "local", meta_title: p.meta_title || "", meta_description: p.meta_description || "",
       tags: (p.tags || []).join(", "), weight: p.weight || "",
     });
@@ -174,8 +174,8 @@ const AdminProducts = () => {
       promotional_price_mzn: form.has_promotion && form.promotional_price_mzn ? Number(form.promotional_price_mzn) : null,
       promotion_start_date: form.has_promotion && form.promotion_start_date ? form.promotion_start_date : null,
       promotion_end_date: form.has_promotion && form.promotion_end_date ? form.promotion_end_date : null,
-      delivery_time_min: Number(form.delivery_time_min) || 3,
-      delivery_time_max: Number(form.delivery_time_max) || 15,
+      delivery_time_min: Number(form.delivery_time_min) || 7,
+      delivery_time_max: Number(form.delivery_time_max) || 20,
       origin: form.origin,
       meta_title: form.meta_title || null,
       meta_description: form.meta_description || null,

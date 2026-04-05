@@ -109,7 +109,7 @@ const HeroBanner = () => (
     <div className="bg-primary/5 border-b border-border">
       <div className="container flex flex-wrap items-center justify-center gap-6 py-3">
         <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-          <Truck className="h-4 w-4 text-primary" /> Entrega 3-15 dias úteis
+          <Truck className="h-4 w-4 text-primary" /> Entrega 7-20 dias úteis
         </div>
         <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
           <ShieldCheck className="h-4 w-4 text-primary" /> Compra 100% segura

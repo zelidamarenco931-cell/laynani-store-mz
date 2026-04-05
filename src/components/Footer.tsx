@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Truck, ShieldCheck, CreditCard, Headphones } from "lucide-react";
 
 const features = [
-  { icon: Truck, label: "Entrega Rápida", desc: "3-15 dias úteis" },
+  { icon: Truck, label: "Entrega Rápida", desc: "7-20 dias úteis" },
   { icon: ShieldCheck, label: "Compra Segura", desc: "Dados protegidos" },
   { icon: CreditCard, label: "Pagamento Fácil", desc: "M-Pesa, Cartão, PayPal" },
   { icon: Headphones, label: "Suporte 24/7", desc: "Sempre disponível" },

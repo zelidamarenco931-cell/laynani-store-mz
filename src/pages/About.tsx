@@ -38,7 +38,7 @@ const About = () => (
             { icon: Users, label: "Equipa Dedicada", desc: "Profissionais ao seu serviço" },
             { icon: Heart, label: "Feito com Amor", desc: "Para o povo moçambicano" },
             { icon: Globe, label: "Todo Moçambique", desc: "De Maputo a Cabo Delgado" },
-            { icon: Truck, label: "Entrega Rápida", desc: "3 a 15 dias úteis" },
+            { icon: Truck, label: "Entrega Rápida", desc: "7 a 20 dias úteis" },
           ].map((item) => (
             <div key={item.label} className="rounded-xl border bg-card p-4 text-center shadow-card">
               <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
