@@ -8,9 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Copy, Share2, MousePointerClick, ShoppingCart, DollarSign, Wallet, ArrowLeft, ExternalLink } from "lucide-react";
+import {
+  Copy, Share2, MousePointerClick, ShoppingCart, DollarSign,
+  Wallet, ArrowLeft, TrendingUp, Link2, Facebook, Instagram,
+  Music2, BarChart3, ArrowUpRight, Clock
+} from "lucide-react";
 
 const AffiliateDashboard = () => {
   const { user, loading: authLoading } = useAuth();
@@ -23,7 +29,6 @@ const AffiliateDashboard = () => {
   const [selectedProduct, setSelectedProduct] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Payout form
   const [payoutMethod, setPayoutMethod] = useState("");
   const [payoutAccount, setPayoutAccount] = useState("");
   const [payoutAmount, setPayoutAmount] = useState("");
@@ -90,6 +95,8 @@ const AffiliateDashboard = () => {
   const approvedCommission = commissions.filter((c) => c.status === "approved").reduce((s, c) => s + Number(c.amount_mzn), 0);
   const paidOut = payouts.filter((p) => p.status === "paid").reduce((s, p) => s + Number(p.amount_mzn), 0);
   const availableBalance = approvedCommission - paidOut;
+  const totalEarned = approvedCommission + paidOut;
+  const conversionRate = clicks > 0 ? ((commissions.length / clicks) * 100).toFixed(1) : "0";
 
   const requestPayout = async () => {
     if (!affiliate) return;
@@ -112,168 +119,272 @@ const AffiliateDashboard = () => {
     fetchData();
   };
 
+  const statusLabels: Record<string, string> = { pending: "Pendente", approved: "Aprovada", paid: "Paga", cancelled: "Cancelada", requested: "Solicitado" };
+  const statusColors: Record<string, string> = { pending: "secondary", approved: "default", paid: "default", cancelled: "destructive", requested: "secondary" };
+
   if (loading || authLoading) return (
-    <div className="flex min-h-screen flex-col"><Navbar /><main className="flex flex-1 items-center justify-center"><p>Carregando...</p></main><Footer /></div>
+    <div className="flex min-h-screen flex-col"><Navbar /><main className="flex flex-1 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></main><Footer /></div>
   );
 
   if (!affiliate) return (
     <div className="flex min-h-screen flex-col"><Navbar />
-      <main className="container flex flex-1 flex-col items-center justify-center gap-4 py-20">
-        <Share2 className="h-16 w-16 text-muted-foreground/40" />
-        <h2 className="text-xl font-semibold">Você ainda não é afiliado</h2>
-        <Button asChild><Link to="/afiliados">Candidatar-se</Link></Button>
+      <main className="container flex flex-1 flex-col items-center justify-center gap-6 px-4 py-20">
+        <div className="rounded-full bg-muted p-6"><Share2 className="h-12 w-12 text-muted-foreground" /></div>
+        <h2 className="text-xl font-bold text-foreground">Ainda não é afiliado</h2>
+        <p className="text-center text-sm text-muted-foreground max-w-sm">Junte-se ao programa e comece a ganhar comissões.</p>
+        <Button asChild className="rounded-full px-8"><Link to="/afiliados">Candidatar-se</Link></Button>
       </main>
     <Footer /></div>
   );
 
   if (affiliate.status === "pending") return (
     <div className="flex min-h-screen flex-col"><Navbar />
-      <main className="container flex flex-1 flex-col items-center justify-center gap-4 py-20">
-        <Share2 className="h-16 w-16 text-primary/40" />
-        <h2 className="text-xl font-semibold">Candidatura em Análise</h2>
-        <p className="text-muted-foreground">Aguarde a aprovação do administrador.</p>
-        <Button variant="outline" asChild><Link to="/conta">Voltar à Conta</Link></Button>
+      <main className="container flex flex-1 flex-col items-center justify-center gap-6 px-4 py-20">
+        <div className="rounded-full bg-primary/10 p-6"><Clock className="h-12 w-12 text-primary" /></div>
+        <h2 className="text-xl font-bold text-foreground">Candidatura em Análise</h2>
+        <p className="text-center text-sm text-muted-foreground max-w-sm">Estamos a analisar a sua candidatura. Será notificado em breve.</p>
+        <Button variant="outline" asChild className="rounded-full"><Link to="/conta"><ArrowLeft className="mr-2 h-4 w-4" /> Minha Conta</Link></Button>
       </main>
     <Footer /></div>
   );
 
   if (affiliate.status === "blocked") return (
     <div className="flex min-h-screen flex-col"><Navbar />
-      <main className="container flex flex-1 flex-col items-center justify-center gap-4 py-20">
-        <h2 className="text-xl font-semibold text-destructive">Conta Bloqueada</h2>
-        <p className="text-muted-foreground">Entre em contacto com o suporte.</p>
+      <main className="container flex flex-1 flex-col items-center justify-center gap-6 px-4 py-20">
+        <h2 className="text-xl font-bold text-destructive">Conta Suspensa</h2>
+        <p className="text-center text-sm text-muted-foreground">Entre em contacto com o suporte para mais informações.</p>
       </main>
     <Footer /></div>
   );
 
-  const statusLabels: Record<string, string> = { pending: "Pendente", approved: "Aprovada", paid: "Paga", cancelled: "Cancelada", requested: "Solicitado" };
-  const statusColors: Record<string, string> = { pending: "secondary", approved: "default", paid: "default", cancelled: "destructive", requested: "secondary" };
-
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col bg-background">
       <Navbar />
-      <main className="container flex-1 py-8">
-        <Button variant="ghost" size="sm" className="mb-4" asChild><Link to="/conta"><ArrowLeft className="mr-2 h-4 w-4" /> Minha Conta</Link></Button>
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-3xl font-bold">Painel do Afiliado</h1>
-          <Badge variant="outline" className="text-sm">Código: {affiliate.affiliate_code}</Badge>
-        </div>
-
-        {/* Stats */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { icon: MousePointerClick, label: "Cliques", value: clicks },
-            { icon: ShoppingCart, label: "Vendas", value: commissions.length },
-            { icon: DollarSign, label: "Pendente", value: `${pendingCommission.toLocaleString("pt-MZ")} MZN` },
-            { icon: Wallet, label: "Disponível", value: `${availableBalance.toLocaleString("pt-MZ")} MZN` },
-          ].map((s) => (
-            <div key={s.label} className="rounded-xl border bg-card p-5 shadow-sm">
-              <div className="flex items-center gap-3">
-                <s.icon className="h-8 w-8 text-primary" />
-                <div><p className="text-sm text-muted-foreground">{s.label}</p><p className="text-2xl font-bold">{s.value}</p></div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid gap-8 lg:grid-cols-2">
-          {/* Link Generator */}
-          <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2"><Share2 className="h-5 w-5 text-primary" /> Gerador de Links</h2>
-            <div>
-              <Label>Selecione um Produto</Label>
-              <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                <SelectTrigger><SelectValue placeholder="Escolha..." /></SelectTrigger>
-                <SelectContent>{products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            {selectedProduct && (
-              <div className="space-y-3">
-                <Input readOnly value={generateLink()} className="text-xs bg-muted" />
-                <div className="grid grid-cols-2 gap-2">
-                  <Button onClick={copyLink} size="sm"><Copy className="mr-1 h-4 w-4" /> Copiar</Button>
-                  <Button onClick={shareFacebook} size="sm" variant="outline">Facebook</Button>
-                  <Button onClick={shareInstagram} size="sm" variant="outline">Instagram</Button>
-                  <Button onClick={shareTikTok} size="sm" variant="outline">TikTok</Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Payout Request */}
-          <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /> Solicitar Saque</h2>
-            <p className="text-sm text-muted-foreground">Saldo disponível: <strong className="text-foreground">{availableBalance.toLocaleString("pt-MZ")} MZN</strong> (mín. 500 MZN)</p>
-            <div>
-              <Label>Valor (MZN)</Label>
-              <Input type="number" min={500} max={availableBalance} value={payoutAmount} onChange={(e) => setPayoutAmount(e.target.value)} />
-            </div>
-            <div>
-              <Label>Método</Label>
-              <Select value={payoutMethod} onValueChange={setPayoutMethod}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mpesa">M-Pesa</SelectItem>
-                  <SelectItem value="emola">e-Mola</SelectItem>
-                  <SelectItem value="bank_transfer">Transferência Bancária</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>{payoutMethod === "bank_transfer" ? "NIB" : "Número da Carteira"}</Label>
-              <Input value={payoutAccount} onChange={(e) => setPayoutAccount(e.target.value)} placeholder={payoutMethod === "bank_transfer" ? "NIB da conta" : "+258 8X XXX XXXX"} />
-            </div>
-            <Button onClick={requestPayout} className="w-full" disabled={requestingPayout || availableBalance < 500}>
-              {requestingPayout ? "Enviando..." : "Solicitar Saque"}
+      <main className="flex-1">
+        {/* Header */}
+        <div className="border-b bg-gradient-primary">
+          <div className="container mx-auto px-4 py-8 sm:py-10">
+            <Button variant="ghost" size="sm" className="mb-4 text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10" asChild>
+              <Link to="/conta"><ArrowLeft className="mr-2 h-4 w-4" /> Minha Conta</Link>
             </Button>
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-extrabold text-primary-foreground sm:text-3xl">Painel do Afiliado</h1>
+                <p className="mt-1 text-sm text-primary-foreground/70">Gerencie os seus links, comissões e saques</p>
+              </div>
+              <Badge className="rounded-full border-white/20 bg-white/15 px-4 py-1.5 text-sm font-semibold text-primary-foreground backdrop-blur-sm">
+                {affiliate.affiliate_code}
+              </Badge>
+            </div>
           </div>
         </div>
 
-        {/* Commissions History */}
-        <div className="mt-8 rounded-xl border bg-card p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold">Histórico de Comissões</h2>
-          {commissions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma comissão ainda. Partilhe seus links!</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b text-left text-muted-foreground"><th className="pb-2">Data</th><th className="pb-2">Pedido</th><th className="pb-2">Valor</th><th className="pb-2">Status</th></tr></thead>
-                <tbody>
-                  {commissions.map((c) => (
-                    <tr key={c.id} className="border-b last:border-0">
-                      <td className="py-2">{new Date(c.created_at).toLocaleDateString("pt-MZ")}</td>
-                      <td className="py-2">#{c.order_id?.slice(0, 8)}</td>
-                      <td className="py-2 font-medium">{Number(c.amount_mzn).toLocaleString("pt-MZ")} MZN</td>
-                      <td className="py-2"><Badge variant={statusColors[c.status] as any}>{statusLabels[c.status]}</Badge></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Payouts History */}
-        {payouts.length > 0 && (
-          <div className="mt-6 rounded-xl border bg-card p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold">Histórico de Saques</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b text-left text-muted-foreground"><th className="pb-2">Data</th><th className="pb-2">Valor</th><th className="pb-2">Método</th><th className="pb-2">Status</th></tr></thead>
-                <tbody>
-                  {payouts.map((p) => (
-                    <tr key={p.id} className="border-b last:border-0">
-                      <td className="py-2">{new Date(p.requested_at).toLocaleDateString("pt-MZ")}</td>
-                      <td className="py-2 font-medium">{Number(p.amount_mzn).toLocaleString("pt-MZ")} MZN</td>
-                      <td className="py-2">{p.method === "mpesa" ? "M-Pesa" : p.method === "emola" ? "e-Mola" : "Banco"}</td>
-                      <td className="py-2"><Badge variant={statusColors[p.status] as any}>{statusLabels[p.status]}</Badge></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        <div className="container mx-auto px-4 py-6 sm:py-8">
+          {/* Stats Grid */}
+          <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+            {[
+              { icon: MousePointerClick, label: "Cliques", value: clicks.toLocaleString("pt-MZ"), change: "", color: "bg-blue-500/10 text-blue-600" },
+              { icon: ShoppingCart, label: "Conversões", value: commissions.length.toString(), change: `${conversionRate}%`, color: "bg-green-500/10 text-green-600" },
+              { icon: DollarSign, label: "Total Ganho", value: `${totalEarned.toLocaleString("pt-MZ")}`, change: "MZN", color: "bg-primary/10 text-primary" },
+              { icon: Wallet, label: "Disponível", value: `${availableBalance.toLocaleString("pt-MZ")}`, change: "MZN", color: "bg-amber-500/10 text-amber-600" },
+            ].map((s) => (
+              <Card key={s.label} className="border shadow-sm">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${s.color}`}>
+                      <s.icon className="h-4 w-4" />
+                    </div>
+                    {s.change && <span className="text-xs font-medium text-muted-foreground">{s.change}</span>}
+                  </div>
+                  <p className="text-xl font-extrabold text-foreground sm:text-2xl">{s.value}</p>
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        )}
+
+          {/* Main Content Tabs */}
+          <Tabs defaultValue="links" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-3 rounded-xl bg-muted p-1 h-auto">
+              <TabsTrigger value="links" className="rounded-lg py-2.5 text-xs sm:text-sm data-[state=active]:shadow-sm">
+                <Link2 className="mr-1.5 h-4 w-4 hidden sm:inline" /> Links
+              </TabsTrigger>
+              <TabsTrigger value="earnings" className="rounded-lg py-2.5 text-xs sm:text-sm data-[state=active]:shadow-sm">
+                <BarChart3 className="mr-1.5 h-4 w-4 hidden sm:inline" /> Comissões
+              </TabsTrigger>
+              <TabsTrigger value="payouts" className="rounded-lg py-2.5 text-xs sm:text-sm data-[state=active]:shadow-sm">
+                <Wallet className="mr-1.5 h-4 w-4 hidden sm:inline" /> Saques
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Links Tab */}
+            <TabsContent value="links" className="space-y-6">
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Share2 className="h-5 w-5 text-primary" /> Gerador de Links
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">Selecione um Produto</Label>
+                    <Select value={selectedProduct} onValueChange={setSelectedProduct}>
+                      <SelectTrigger className="h-11"><SelectValue placeholder="Escolha um produto..." /></SelectTrigger>
+                      <SelectContent>{products.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  {selectedProduct && (
+                    <div className="space-y-4 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+                      <div className="flex items-center gap-2 rounded-xl border bg-muted/50 p-3">
+                        <Input readOnly value={generateLink()} className="border-0 bg-transparent text-xs focus-visible:ring-0" />
+                        <Button onClick={copyLink} size="sm" variant="secondary" className="shrink-0">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <Button onClick={shareFacebook} variant="outline" className="h-11 gap-2 text-xs sm:text-sm">
+                          <Facebook className="h-4 w-4" /> Facebook
+                        </Button>
+                        <Button onClick={shareInstagram} variant="outline" className="h-11 gap-2 text-xs sm:text-sm">
+                          <Instagram className="h-4 w-4" /> Instagram
+                        </Button>
+                        <Button onClick={shareTikTok} variant="outline" className="h-11 gap-2 text-xs sm:text-sm">
+                          <Music2 className="h-4 w-4" /> TikTok
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Quick Tips */}
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="p-5">
+                  <h3 className="mb-3 font-semibold text-foreground flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-primary" /> Dicas para Vender Mais
+                  </h3>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex items-start gap-2"><ArrowUpRight className="mt-0.5 h-3 w-3 shrink-0 text-primary" /> Partilhe stories com o produto e adicione o link na bio</li>
+                    <li className="flex items-start gap-2"><ArrowUpRight className="mt-0.5 h-3 w-3 shrink-0 text-primary" /> Crie conteúdo autêntico mostrando o produto em uso</li>
+                    <li className="flex items-start gap-2"><ArrowUpRight className="mt-0.5 h-3 w-3 shrink-0 text-primary" /> Publique nos horários de maior engajamento (12h-14h e 19h-22h)</li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Earnings Tab */}
+            <TabsContent value="earnings" className="space-y-4">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">Pendente</p>
+                    <p className="text-lg font-bold text-foreground">{pendingCommission.toLocaleString("pt-MZ")} <span className="text-xs font-normal text-muted-foreground">MZN</span></p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">Aprovada</p>
+                    <p className="text-lg font-bold text-primary">{approvedCommission.toLocaleString("pt-MZ")} <span className="text-xs font-normal text-muted-foreground">MZN</span></p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Histórico de Comissões</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {commissions.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <BarChart3 className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
+                      <p className="text-sm text-muted-foreground">Nenhuma comissão ainda.<br />Partilhe os seus links para começar!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {commissions.map((c) => (
+                        <div key={c.id} className="flex items-center justify-between rounded-lg border p-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">Pedido #{c.order_id?.slice(0, 8)}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(c.created_at).toLocaleDateString("pt-MZ")}</p>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-sm font-bold text-foreground">{Number(c.amount_mzn).toLocaleString("pt-MZ")} MZN</span>
+                            <Badge variant={statusColors[c.status] as any} className="text-xs">{statusLabels[c.status]}</Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Payouts Tab */}
+            <TabsContent value="payouts" className="space-y-6">
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Wallet className="h-5 w-5 text-primary" /> Solicitar Saque
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="rounded-xl bg-muted/50 p-4 text-center">
+                    <p className="text-xs text-muted-foreground mb-1">Saldo Disponível</p>
+                    <p className="text-2xl font-extrabold text-foreground">{availableBalance.toLocaleString("pt-MZ")} <span className="text-sm font-normal text-muted-foreground">MZN</span></p>
+                    <p className="text-xs text-muted-foreground mt-1">Mínimo: 500 MZN</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">Valor (MZN)</Label>
+                    <Input type="number" min={500} max={availableBalance} value={payoutAmount} onChange={(e) => setPayoutAmount(e.target.value)} placeholder="Ex: 1000" className="h-11" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">Método de Pagamento</Label>
+                    <Select value={payoutMethod} onValueChange={setPayoutMethod}>
+                      <SelectTrigger className="h-11"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mpesa">M-Pesa</SelectItem>
+                        <SelectItem value="emola">e-Mola</SelectItem>
+                        <SelectItem value="bank_transfer">Transferência Bancária</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm font-medium">{payoutMethod === "bank_transfer" ? "NIB" : "Número da Carteira"}</Label>
+                    <Input value={payoutAccount} onChange={(e) => setPayoutAccount(e.target.value)} placeholder={payoutMethod === "bank_transfer" ? "NIB da conta" : "+258 8X XXX XXXX"} className="h-11" />
+                  </div>
+                  <Button onClick={requestPayout} className="h-12 w-full rounded-xl font-semibold" disabled={requestingPayout || availableBalance < 500}>
+                    {requestingPayout ? "Enviando..." : "Solicitar Saque"}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {payouts.length > 0 && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Histórico de Saques</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {payouts.map((p) => (
+                        <div key={p.id} className="flex items-center justify-between rounded-lg border p-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground">{p.method === "mpesa" ? "M-Pesa" : p.method === "emola" ? "e-Mola" : "Banco"}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(p.requested_at).toLocaleDateString("pt-MZ")}</p>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-sm font-bold text-foreground">{Number(p.amount_mzn).toLocaleString("pt-MZ")} MZN</span>
+                            <Badge variant={statusColors[p.status] as any} className="text-xs">{statusLabels[p.status]}</Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
       </main>
       <Footer />
     </div>
