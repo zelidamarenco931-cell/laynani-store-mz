@@ -47,7 +47,7 @@ const emptyForm: ProductForm = {
   name: "", description: "", price_mzn: "", promotional_price_mzn: "",
   stock: "0", category_id: "", sku: "", status: "active",
   has_promotion: false, promotion_start_date: "", promotion_end_date: "",
-  delivery_time_min: "3", delivery_time_max: "15", origin: "local",
+  delivery_time_min: "7", delivery_time_max: "20", origin: "local",
   meta_title: "", meta_description: "", tags: "", weight: "",
 };
 
