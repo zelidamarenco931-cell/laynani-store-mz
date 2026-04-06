@@ -59,10 +59,31 @@ const AdminOrders = () => {
 
   useEffect(() => { fetchOrders(); }, []);
 
+  const notifyCustomerWhatsApp = (order: any, accepted: boolean) => {
+    const phone = order.shipping_address?.phone?.replace(/\D/g, "") || "";
+    const phoneNum = phone.startsWith("258") ? phone : `258${phone}`;
+    const status = accepted ? "✅ *ACEITE*" : "❌ *REJEITADO*";
+    const msg = encodeURIComponent(
+      `${status}\n\n` +
+      `Olá ${order.shipping_address?.name || "Cliente"},\n\n` +
+      `O comprovante do seu pedido #${order.id.slice(0, 8).toUpperCase()} foi ${accepted ? "aceite" : "rejeitado"}.\n` +
+      `💰 Total: ${Number(order.total_mzn).toLocaleString("pt-MZ")} MZN\n\n` +
+      (accepted ? "O seu pedido será processado em breve. Obrigado!" : "Por favor, envie um novo comprovante ou entre em contacto connosco.")
+    );
+    window.open(`https://wa.me/${phoneNum}?text=${msg}`, "_blank");
+  };
+
   const updateStatus = async (orderId: string, status: OrderStatus) => {
     const { error } = await supabase.from("orders").update({ status }).eq("id", orderId);
     if (error) toast.error("Erro ao actualizar.");
-    else { toast.success(`Status: ${statusLabels[status]}`); fetchOrders(); }
+    else {
+      toast.success(`Status: ${statusLabels[status]}`);
+      const order = orders.find(o => o.id === orderId);
+      if (order && (status === "paid" || status === "cancelled")) {
+        notifyCustomerWhatsApp(order, status === "paid");
+      }
+      fetchOrders();
+    }
   };
 
   const addTracking = async (orderId: string) => {
