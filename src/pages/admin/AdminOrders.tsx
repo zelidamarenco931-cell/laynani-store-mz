@@ -190,6 +190,16 @@ const AdminOrders = () => {
                   <CheckCircle className="mr-1 h-4 w-4" /> Marcar Entregue
                 </Button>
               )}
+
+              {order.shipping_address?.phone && (
+                <Button size="sm" variant="outline" onClick={() => {
+                  const phone = (order.shipping_address?.phone || "").replace(/\D/g, "");
+                  const phoneNum = phone.startsWith("258") ? phone : `258${phone}`;
+                  window.open(`https://wa.me/${phoneNum}`, "_blank");
+                }}>
+                  <MessageCircle className="mr-1 h-4 w-4" /> WhatsApp
+                </Button>
+              )}
             </div>
           </div>
         ))}

@@ -103,6 +103,10 @@ const OrderSuccess = () => {
             </div>
           )}
 
+          <div className="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
+            <p>📱 Dúvidas? Fale connosco no <a href="https://wa.me/258868214712" target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">WhatsApp</a> ou ligue para <strong>868 214 712</strong></p>
+          </div>
+
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button asChild>
               <Link to="/conta">Ver Meus Pedidos <ArrowRight className="ml-2 h-4 w-4" /></Link>
