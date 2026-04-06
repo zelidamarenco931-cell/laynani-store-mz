@@ -119,6 +119,17 @@ const Checkout = () => {
     setUploading(false);
     clearCart();
     toast.success("Pedido realizado com sucesso!");
+
+    // Notify admin via WhatsApp
+    const orderSummary = items.map(i => `${i.name} x${i.quantity}`).join(", ");
+    const waMsg = encodeURIComponent(
+      `🛒 *Novo Pedido #${order.id.slice(0, 8).toUpperCase()}*\n\n` +
+      `👤 ${formData.name}\n📞 ${formData.phone}\n📍 ${province}, ${formData.city}\n\n` +
+      `📦 ${orderSummary}\n💰 Total: ${grandTotal.toLocaleString("pt-MZ")} MZN\n💳 ${paymentMethods.find(m => m.id === payment)?.label || payment}\n\n` +
+      `Verifique o comprovante no painel admin.`
+    );
+    window.open(`https://wa.me/258868214712?text=${waMsg}`, "_blank");
+
     navigate(`/pedido-sucesso?order=${order.id}`);
   };
 

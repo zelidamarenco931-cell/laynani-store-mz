@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, Eye, Truck, Package } from "lucide-react";
+import { CheckCircle, XCircle, Eye, Truck, Package, MessageCircle } from "lucide-react";
 
 const statusLabels: Record<string, string> = {
   pending: "Pendente", paid: "Pago", shipped: "Enviado", delivered: "Entregue", cancelled: "Cancelado",
