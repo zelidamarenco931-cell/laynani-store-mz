@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, Eye, Truck, Package } from "lucide-react";
+import { CheckCircle, XCircle, Eye, Truck, Package, MessageCircle } from "lucide-react";
 
 const statusLabels: Record<string, string> = {
   pending: "Pendente", paid: "Pago", shipped: "Enviado", delivered: "Entregue", cancelled: "Cancelado",
@@ -59,10 +59,31 @@ const AdminOrders = () => {
 
   useEffect(() => { fetchOrders(); }, []);
 
+  const notifyCustomerWhatsApp = (order: any, accepted: boolean) => {
+    const phone = order.shipping_address?.phone?.replace(/\D/g, "") || "";
+    const phoneNum = phone.startsWith("258") ? phone : `258${phone}`;
+    const status = accepted ? "✅ *ACEITE*" : "❌ *REJEITADO*";
+    const msg = encodeURIComponent(
+      `${status}\n\n` +
+      `Olá ${order.shipping_address?.name || "Cliente"},\n\n` +
+      `O comprovante do seu pedido #${order.id.slice(0, 8).toUpperCase()} foi ${accepted ? "aceite" : "rejeitado"}.\n` +
+      `💰 Total: ${Number(order.total_mzn).toLocaleString("pt-MZ")} MZN\n\n` +
+      (accepted ? "O seu pedido será processado em breve. Obrigado!" : "Por favor, envie um novo comprovante ou entre em contacto connosco.")
+    );
+    window.open(`https://wa.me/${phoneNum}?text=${msg}`, "_blank");
+  };
+
   const updateStatus = async (orderId: string, status: OrderStatus) => {
     const { error } = await supabase.from("orders").update({ status }).eq("id", orderId);
     if (error) toast.error("Erro ao actualizar.");
-    else { toast.success(`Status: ${statusLabels[status]}`); fetchOrders(); }
+    else {
+      toast.success(`Status: ${statusLabels[status]}`);
+      const order = orders.find(o => o.id === orderId);
+      if (order && (status === "paid" || status === "cancelled")) {
+        notifyCustomerWhatsApp(order, status === "paid");
+      }
+      fetchOrders();
+    }
   };
 
   const addTracking = async (orderId: string) => {
@@ -167,6 +188,16 @@ const AdminOrders = () => {
               {order.status === "shipped" && (
                 <Button size="sm" variant="outline" onClick={() => updateStatus(order.id, "delivered")}>
                   <CheckCircle className="mr-1 h-4 w-4" /> Marcar Entregue
+                </Button>
+              )}
+
+              {order.shipping_address?.phone && (
+                <Button size="sm" variant="outline" onClick={() => {
+                  const phone = (order.shipping_address?.phone || "").replace(/\D/g, "");
+                  const phoneNum = phone.startsWith("258") ? phone : `258${phone}`;
+                  window.open(`https://wa.me/${phoneNum}`, "_blank");
+                }}>
+                  <MessageCircle className="mr-1 h-4 w-4" /> WhatsApp
                 </Button>
               )}
             </div>
