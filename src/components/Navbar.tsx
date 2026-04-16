@@ -28,7 +28,7 @@ const Navbar = () => {
           </SheetTrigger>
           <SheetContent side="left" className="w-72">
             <div className="mt-8 flex flex-col gap-4">
-              <Link to="/" className="text-2xl font-bold text-gradient">Laynani Store Store</Link>
+              <Link to="/" className="text-2xl font-bold text-gradient">Laynani Store</Link>
               {navLinks.map((l) => (
                 <Link key={l.href} to={l.href} className="text-lg font-medium text-foreground/80 hover:text-primary transition-colors">{l.label}</Link>
               ))}

@@ -33,7 +33,6 @@ const SIZE_OPTIONS: Record<string, string[]> = {
 };
 
 const STEPS = ["Informações Básicas", "Preço & Promoção", "Variantes", "Imagens", "Entrega & SEO"];
-const STEPS_SHORT = ["Info", "Preço", "Variantes", "Imagens", "SEO"];
 
 interface ProductForm {
   name: string; description: string; price_mzn: string; promotional_price_mzn: string;
@@ -104,7 +103,6 @@ const AdminProducts = () => {
       tags: (p.tags || []).join(", "), weight: p.weight || "",
     });
     setExistingImages(p.images || []);
-    // Parse existing color/size from old fields
     if (p.color) {
       const colors = p.color.split(",").map((c: string) => c.trim());
       setSelectedColors(colors.map((c: string) => {
@@ -426,13 +424,14 @@ const AdminProducts = () => {
           <div onClick={() => totalMediaCount < 10 && fileRef.current?.click()}
             className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed p-8 transition-colors ${totalMediaCount >= 10 ? "opacity-50 cursor-not-allowed border-muted" : "border-muted-foreground/30 hover:border-primary/50 hover:bg-muted/50"}`}>
             <Upload className="h-10 w-10 text-muted-foreground/60" />
-            <p className="text-sm font-medium text-muted-foreground">Arrastar e soltar ou clique para selecionar</p>
+            <p className="text-sm font-medium text-muted-foreground text-center">Arrastar e soltar ou clique para selecionar</p>
           </div>
 
           {existingImages.length > 0 && (
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">Imagens actuais (a 1ª é principal)</p>
-              <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+              {/* FIX: grid-cols-3 on mobile instead of 4 — avoids cramped thumbnails */}
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
                 {existingImages.map((url, i) => (
                   <div key={i} className={`group relative aspect-square rounded-lg overflow-hidden ${i === 0 ? "ring-2 ring-primary" : "border"}`}>
                     <img src={url} alt="" className="h-full w-full object-cover" />
@@ -450,7 +449,8 @@ const AdminProducts = () => {
           {mediaFiles.length > 0 && (
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">Novas imagens</p>
-              <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+              {/* FIX: grid-cols-3 on mobile instead of 4 */}
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
                 {mediaFiles.map((file, i) => (
                   <div key={i} className="group relative aspect-square rounded-lg border overflow-hidden bg-muted">
                     <img src={URL.createObjectURL(file)} alt="" className="h-full w-full object-cover" />
@@ -525,7 +525,8 @@ const AdminProducts = () => {
           <DialogTrigger asChild>
             <Button><Plus className="mr-2 h-4 w-4" /> Novo Produto</Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          {/* FIX: w-[95vw] ensures dialog doesn't overflow on mobile */}
+          <DialogContent className="w-[95vw] max-h-[90vh] overflow-y-auto sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5 text-primary" />
@@ -533,13 +534,13 @@ const AdminProducts = () => {
               </DialogTitle>
             </DialogHeader>
 
-            {/* Progress bar */}
+            {/* Progress stepper */}
             <div className="space-y-2">
-              {/* Mobile: numbered circles */}
+              {/* Mobile: larger numbered circles for easier tapping */}
               <div className="flex sm:hidden items-center justify-between px-1">
                 {STEPS.map((s, i) => (
                   <button key={i} onClick={() => setStep(i)}
-                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+                    className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
                       i === step ? "bg-primary text-primary-foreground"
                         : i < step ? "bg-primary/20 text-primary"
                         : "bg-muted text-muted-foreground"
@@ -608,6 +609,7 @@ const AdminProducts = () => {
                   <div className="flex h-full w-full items-center justify-center"><ImageIcon className="h-5 w-5 text-muted-foreground/40" /></div>
                 )}
               </div>
+
               {/* Content */}
               <div className="flex-1 min-w-0">
                 {/* Top row: name + action buttons */}
@@ -623,18 +625,29 @@ const AdminProducts = () => {
                       <span className="text-xs text-muted-foreground">Stock: {p.stock}</span>
                     </div>
                   </div>
-                  {/* Action buttons always visible */}
+                  {/* Action buttons */}
                   <div className="flex shrink-0 gap-0.5">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateProduct(p)} title="Duplicar"><Copy className="h-3.5 w-3.5" /></Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
-                {/* Price row */}
-                <div className="mt-1 flex items-center gap-2">
-                  <p className="font-bold text-primary text-sm sm:text-base whitespace-nowrap">{Number(p.price_mzn).toLocaleString("pt-MZ")} MZN</p>
-                  {p.has_promotion && p.promotional_price_mzn && (
-                    <p className="text-xs text-destructive font-semibold line-through">{Number(p.promotional_price_mzn).toLocaleString("pt-MZ")} MZN</p>
+
+                {/* FIX: Price display — original price with line-through when promo active, promo price highlighted */}
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  {p.has_promotion && p.promotional_price_mzn ? (
+                    <>
+                      <p className="font-bold text-destructive text-sm sm:text-base whitespace-nowrap">
+                        {Number(p.promotional_price_mzn).toLocaleString("pt-MZ")} MZN
+                      </p>
+                      <p className="text-xs text-muted-foreground line-through whitespace-nowrap">
+                        {Number(p.price_mzn).toLocaleString("pt-MZ")} MZN
+                      </p>
+                    </>
+                  ) : (
+                    <p className="font-bold text-primary text-sm sm:text-base whitespace-nowrap">
+                      {Number(p.price_mzn).toLocaleString("pt-MZ")} MZN
+                    </p>
                   )}
                 </div>
               </div>
