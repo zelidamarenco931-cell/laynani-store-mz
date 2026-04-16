@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Laynani Store</string>
-    <string name="title_activity_main">Laynani Store</string>
-    <string name="package_name">com.laynani.store</string>
-    <string name="custom_url_scheme">com.laynani.store</string>
+    <string name="app_name">Laynani Store Store</string>
+    <string name="title_activity_main">Laynani Store Store</string>
+    <string name="package_name">com.Laynani Store.store</string>
+    <string name="custom_url_scheme">com.Laynani Store.store</string>
 </resources>

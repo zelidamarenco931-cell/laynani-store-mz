@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.laynani.store',
-  appName: 'Laynani Store',
+  appId: 'com.Laynani Store.store',
+  appName: 'Laynani Store Store',
   webDir: 'dist'
 };
 

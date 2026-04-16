@@ -49,7 +49,7 @@ const Footer = () => (
       <div>
         <h4 className="mb-3 text-sm font-semibold">Pagamentos Aceites</h4>
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-          {["M-Pesa", "e-Mola", "PayPal", "Visa", "Mastercard"].map((p) => (
+          {["M-Pesa", "e-Mola", "PayPal"].map((p) => (
             <span key={p} className="rounded-md border bg-background px-2 py-1">{p}</span>
           ))}
         </div>

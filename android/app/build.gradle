@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.laynani.store"
+    namespace = "com.Laynani Store.store"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.laynani.store"
+        applicationId "com.Laynani Store.store"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

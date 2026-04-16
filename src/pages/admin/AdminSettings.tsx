@@ -60,13 +60,13 @@ const AdminSettings = () => {
         <h2 className="mb-4 text-lg font-semibold">Taxas de Frete por Província</h2>
         <div className="space-y-2">
           {shippingRates.map((r) => (
-            <div key={r.id} className="flex items-center gap-4 rounded-lg border p-3">
-              <span className="flex-1 text-sm font-medium">{r.province}</span>
+            <div key={r.id} className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
+              <span className="flex-1 min-w-[120px] text-sm font-medium">{r.province}</span>
               <div className="flex items-center gap-2">
                 <Input
                   type="number"
                   defaultValue={r.price_mzn}
-                  className="w-28"
+                  className="w-24 sm:w-28"
                   onBlur={(e) => {
                     const v = Number(e.target.value);
                     if (v !== r.price_mzn) updateRate(r.id, v);
@@ -107,8 +107,8 @@ const AdminSettings = () => {
         </div>
         <div className="space-y-2">
           {coupons.map((c) => (
-            <div key={c.id} className="flex items-center justify-between rounded-lg border p-3">
-              <div>
+            <div key={c.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
+              <div className="min-w-0">
                 <span className="font-mono font-medium">{c.code}</span>
                 <span className="ml-2 text-sm text-muted-foreground">
                   {c.discount_type === "percent" ? `${c.value}%` : `${c.value} MZN`}

@@ -31,7 +31,7 @@ const AdminLayout = () => {
 
   const Sidebar = () => (
     <div className="flex flex-col gap-1">
-      <Link to="/" className="mb-4 text-xl font-bold text-gradient">Laynani Admin</Link>
+      <Link to="/" className="mb-4 text-xl font-bold text-gradient">Laynani Store Admin</Link>
       {adminLinks.map((l) => (
         <Link
           key={l.href}
@@ -65,7 +65,7 @@ const AdminLayout = () => {
             <SheetTrigger asChild><Button variant="ghost" size="icon"><Menu className="h-5 w-5" /></Button></SheetTrigger>
             <SheetContent side="left" className="w-64 p-4"><Sidebar /></SheetContent>
           </Sheet>
-          <span className="text-lg font-bold text-gradient">Laynani Admin</span>
+          <span className="text-lg font-bold text-gradient">Laynani Store Admin</span>
         </header>
         <main className="flex-1 p-4 lg:p-8">
           <Outlet />

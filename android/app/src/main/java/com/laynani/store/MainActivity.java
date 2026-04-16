@@ -1,4 +1,4 @@
-package com.laynani.store;
+package com.Laynani Store.store;
 
 import com.getcapacitor.BridgeActivity;
 

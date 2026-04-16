@@ -17,7 +17,7 @@ const slides = [
   {
     image: heroBanner2,
     tag: "🔥 Novidades Todas as Semanas",
-    title: "Compre com estilo na Laynani!",
+    title: "Compre com estilo na Laynani Store!",
     subtitle: "Moda, acessórios e muito mais — preços incríveis em MZN com entrega para todo Moçambique.",
     cta: "Comprar Agora",
     ctaLink: "/catalogo",

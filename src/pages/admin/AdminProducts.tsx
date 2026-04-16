@@ -33,6 +33,7 @@ const SIZE_OPTIONS: Record<string, string[]> = {
 };
 
 const STEPS = ["Informações Básicas", "Preço & Promoção", "Variantes", "Imagens", "Entrega & SEO"];
+const STEPS_SHORT = ["Info", "Preço", "Variantes", "Imagens", "SEO"];
 
 interface ProductForm {
   name: string; description: string; price_mzn: string; promotional_price_mzn: string;
@@ -281,7 +282,7 @@ const AdminProducts = () => {
       );
       case 1: return (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Preço Normal (MZN) *</Label>
               <div className="relative">
@@ -534,7 +535,22 @@ const AdminProducts = () => {
 
             {/* Progress bar */}
             <div className="space-y-2">
-              <div className="flex justify-between text-xs text-muted-foreground">
+              {/* Mobile: numbered circles */}
+              <div className="flex sm:hidden items-center justify-between px-1">
+                {STEPS.map((s, i) => (
+                  <button key={i} onClick={() => setStep(i)}
+                    className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+                      i === step ? "bg-primary text-primary-foreground"
+                        : i < step ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    }`}>
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+              <p className="sm:hidden text-center text-xs font-semibold text-primary">{STEPS[step]}</p>
+              {/* Desktop: text labels */}
+              <div className="hidden sm:flex justify-between text-xs text-muted-foreground">
                 {STEPS.map((s, i) => (
                   <button key={i} onClick={() => setStep(i)}
                     className={`transition-colors ${i === step ? "font-semibold text-primary" : i < step ? "text-foreground" : ""}`}>
@@ -545,7 +561,7 @@ const AdminProducts = () => {
               <Progress value={(step + 1) / STEPS.length * 100} className="h-1.5" />
             </div>
 
-            <div className="min-h-[300px] pt-2">
+            <div className="min-h-[260px] pt-2">
               {renderStep()}
             </div>
 
@@ -583,35 +599,44 @@ const AdminProducts = () => {
       ) : (
         <div className="space-y-3">
           {filteredProducts.map(p => (
-            <div key={p.id} className="flex items-center gap-4 rounded-xl border p-4 transition-colors hover:bg-muted/30">
-              <div className="h-14 w-14 shrink-0 rounded-lg border bg-muted overflow-hidden">
+            <div key={p.id} className="flex items-start gap-3 rounded-xl border p-3 sm:p-4 transition-colors hover:bg-muted/30">
+              {/* Thumbnail */}
+              <div className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 rounded-lg border bg-muted overflow-hidden">
                 {p.images?.[0] ? (
                   <img src={p.images[0]} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center"><ImageIcon className="h-5 w-5 text-muted-foreground/40" /></div>
                 )}
               </div>
+              {/* Content */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-medium truncate">{p.name}</p>
-                  {p.status === "inactive" && <Badge variant="outline" className="text-[10px] text-destructive">Inativo</Badge>}
-                  {p.has_promotion && <Badge className="text-[10px] bg-destructive">PROMO</Badge>}
+                {/* Top row: name + action buttons */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="font-medium truncate">{p.name}</p>
+                      {p.status === "inactive" && <Badge variant="outline" className="text-[10px] text-destructive">Inativo</Badge>}
+                      {p.has_promotion && <Badge className="text-[10px] bg-destructive">PROMO</Badge>}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                      {p.categories?.name && <Badge variant="outline" className="text-[10px]">{p.categories.name}</Badge>}
+                      <span className="text-xs text-muted-foreground">Stock: {p.stock}</span>
+                    </div>
+                  </div>
+                  {/* Action buttons always visible */}
+                  <div className="flex shrink-0 gap-0.5">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateProduct(p)} title="Duplicar"><Copy className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                  {p.categories?.name && <Badge variant="outline" className="text-[10px]">{p.categories.name}</Badge>}
-                  <span className="text-xs text-muted-foreground">Stock: {p.stock}</span>
+                {/* Price row */}
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="font-bold text-primary text-sm sm:text-base whitespace-nowrap">{Number(p.price_mzn).toLocaleString("pt-MZ")} MZN</p>
+                  {p.has_promotion && p.promotional_price_mzn && (
+                    <p className="text-xs text-destructive font-semibold line-through">{Number(p.promotional_price_mzn).toLocaleString("pt-MZ")} MZN</p>
+                  )}
                 </div>
-              </div>
-              <div className="text-right">
-                <p className="font-bold text-primary whitespace-nowrap">{Number(p.price_mzn).toLocaleString("pt-MZ")} MZN</p>
-                {p.has_promotion && p.promotional_price_mzn && (
-                  <p className="text-xs text-destructive font-semibold">{Number(p.promotional_price_mzn).toLocaleString("pt-MZ")} MZN</p>
-                )}
-              </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="icon" onClick={() => duplicateProduct(p)} title="Duplicar"><Copy className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Pencil className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(p.id)}><Trash2 className="h-4 w-4" /></Button>
               </div>
             </div>
           ))}

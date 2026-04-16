@@ -52,9 +52,9 @@ const AdminCategories = () => {
       const path = `categories/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error } = await supabase.storage.from("product-images").upload(path, imageFile);
       if (!error) {
-        const { data } = supabase.storage.from("product-images").getPublicUrl(path);
-        imageUrl = data.publicUrl;
-      }
+      const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+      imageUrl = data.publicUrl;
+    }
     }
 
     const slug = form.slug || generateSlug(form.name);
@@ -194,7 +194,7 @@ const AdminCategories = () => {
                 <p className="font-medium truncate">{c.name}</p>
                 <p className="text-xs text-muted-foreground">/{c.slug}</p>
               </div>
-              <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="flex gap-1 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
                 <Button variant="ghost" size="icon" onClick={() => openEdit(c)}>
                   <Pencil className="h-4 w-4" />
                 </Button>

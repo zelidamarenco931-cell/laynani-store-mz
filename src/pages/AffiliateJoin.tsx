@@ -94,7 +94,7 @@ const AffiliateJoin = () => {
                 Ganhe dinheiro <br className="hidden sm:block" />partilhando o que ama
               </h1>
               <p className="mx-auto mb-8 max-w-xl text-base text-primary-foreground/80 sm:text-lg">
-                Junte-se a centenas de criadores e influenciadores que já ganham comissões com a Laynani. Sem investimento, sem risco.
+                Junte-se a centenas de criadores e influenciadores que já ganham comissões com a Laynani Store. Sem investimento, sem risco.
               </p>
               <a href="#formulario" className="inline-flex items-center gap-2 rounded-full bg-background px-8 py-3.5 font-semibold text-primary shadow-elevated transition-all hover:scale-105 hover:shadow-lg">
                 Começar Agora <ArrowRight className="h-4 w-4" />
@@ -152,7 +152,7 @@ const AffiliateJoin = () => {
         <section className="border-y bg-muted/30 py-14 sm:py-20">
           <div className="container mx-auto px-4">
             <div className="mb-10 text-center">
-              <h2 className="mb-2 text-2xl font-bold text-foreground sm:text-3xl">Porquê ser Afiliado Laynani?</h2>
+              <h2 className="mb-2 text-2xl font-bold text-foreground sm:text-3xl">Porquê ser Afiliado Laynani Store?</h2>
               <p className="text-muted-foreground">Vantagens exclusivas para os nossos parceiros</p>
             </div>
             <div className="mx-auto grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -264,7 +264,7 @@ const AffiliateJoin = () => {
           <div className="container mx-auto px-4 text-center">
             <h2 className="mb-3 text-2xl font-bold text-primary-foreground sm:text-3xl">Pronto para começar a ganhar?</h2>
             <p className="mx-auto mb-6 max-w-md text-primary-foreground/80">
-              Junte-se ao programa de afiliados da Laynani e transforme as suas redes sociais numa fonte de renda.
+              Junte-se ao programa de afiliados da Laynani Store e transforme as suas redes sociais numa fonte de renda.
             </p>
             <a href="#formulario" className="inline-flex items-center gap-2 rounded-full bg-background px-8 py-3.5 font-semibold text-primary shadow-elevated transition-all hover:scale-105">
               Inscrever-me Agora <ArrowRight className="h-4 w-4" />
