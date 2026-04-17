@@ -39,7 +39,7 @@ const Navbar = () => {
           </SheetContent>
         </Sheet>
         <Link to="/" className="flex items-center gap-1">
-          <span className="text-2xl font-extrabold text-gradient">Laynani Store Store</span>
+          <span className="text-2xl font-extrabold text-gradient">Laynani Store</span>
           <span className="hidden text-xs font-medium text-muted-foreground sm:block">Moçambique</span>
         </Link>
         <nav className="hidden items-center gap-6 md:flex">
