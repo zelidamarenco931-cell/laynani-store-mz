@@ -53,13 +53,13 @@ const AdminLayout = () => {
   );
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen overflow-x-hidden w-full">
       {/* Desktop sidebar */}
       <aside className="hidden w-64 border-r bg-muted/30 p-4 lg:block">
         <Sidebar />
       </aside>
       {/* Mobile header */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col min-w-0 overflow-x-hidden">
         <header className="flex h-14 items-center gap-4 border-b px-4 lg:hidden">
           <Sheet>
             <SheetTrigger asChild><Button variant="ghost" size="icon"><Menu className="h-5 w-5" /></Button></SheetTrigger>
@@ -67,7 +67,7 @@ const AdminLayout = () => {
           </Sheet>
           <span className="text-lg font-bold text-gradient">Laynani Store Admin</span>
         </header>
-        <main className="flex-1 p-3 sm:p-4 lg:p-8 overflow-x-hidden min-w-0">
+        <main className="flex-1 p-3 sm:p-4 lg:p-8 min-w-0 overflow-x-hidden">
           <Outlet />
         </main>
       </div>

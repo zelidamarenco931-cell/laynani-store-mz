@@ -515,7 +515,7 @@ const AdminProducts = () => {
   };
 
   return (
-    <div>
+    <div className="w-full min-w-0 overflow-x-hidden">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Produtos</h1>
@@ -523,7 +523,7 @@ const AdminProducts = () => {
         </div>
         <Dialog open={dialogOpen} onOpenChange={o => { setDialogOpen(o); if (!o) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" /> Novo Produto</Button>
+            <Button className="w-full sm:w-auto"><Plus className="mr-2 h-4 w-4" /> Novo Produto</Button>
           </DialogTrigger>
           {/* FIX: w-[95vw] ensures dialog doesn't overflow on mobile */}
           <DialogContent className="w-[95vw] max-h-[90vh] overflow-y-auto sm:max-w-2xl">
