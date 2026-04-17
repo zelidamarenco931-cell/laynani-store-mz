@@ -323,7 +323,7 @@ const AdminProducts = () => {
                   <p className="text-sm text-destructive">⚠️ Preço promocional deve ser menor que o normal!</p>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Início</Label>
                   <Input type="date" value={form.promotion_start_date} onChange={e => setForm({ ...form, promotion_start_date: e.target.value })} />
@@ -356,10 +356,10 @@ const AdminProducts = () => {
                 );
               })}
             </div>
-            <div className="flex items-center gap-2">
-              <input type="color" value={customColorHex} onChange={e => setCustomColorHex(e.target.value)} className="h-8 w-8 cursor-pointer rounded border" />
-              <Input value={customColorName} onChange={e => setCustomColorName(e.target.value)} placeholder="Nome da cor personalizada" className="flex-1" />
-              <Button type="button" size="sm" variant="outline" onClick={addCustomColor}>Adicionar</Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <input type="color" value={customColorHex} onChange={e => setCustomColorHex(e.target.value)} className="h-8 w-8 shrink-0 cursor-pointer rounded border" />
+              <Input value={customColorName} onChange={e => setCustomColorName(e.target.value)} placeholder="Nome da cor personalizada" className="min-w-[140px] flex-1" />
+              <Button type="button" size="sm" variant="outline" onClick={addCustomColor} className="shrink-0">Adicionar</Button>
             </div>
             {selectedColors.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
@@ -437,7 +437,7 @@ const AdminProducts = () => {
                     <img src={url} alt="" className="h-full w-full object-cover" />
                     {i === 0 && <span className="absolute left-1 top-1 rounded bg-primary px-1 py-0.5 text-[9px] font-bold text-primary-foreground">Principal</span>}
                     <button type="button" onClick={() => removeExisting(i)}
-                      className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100">
+                      className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
                       <X className="h-3 w-3" />
                     </button>
                   </div>
@@ -455,7 +455,7 @@ const AdminProducts = () => {
                   <div key={i} className="group relative aspect-square rounded-lg border overflow-hidden bg-muted">
                     <img src={URL.createObjectURL(file)} alt="" className="h-full w-full object-cover" />
                     <button type="button" onClick={() => removeNewFile(i)}
-                      className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100">
+                      className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
                       <X className="h-3 w-3" />
                     </button>
                     <span className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5 text-[10px] text-white truncate">{file.name}</span>
