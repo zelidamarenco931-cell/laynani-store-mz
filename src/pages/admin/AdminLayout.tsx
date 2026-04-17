@@ -67,7 +67,7 @@ const AdminLayout = () => {
           </Sheet>
           <span className="text-lg font-bold text-gradient">Laynani Store Admin</span>
         </header>
-        <main className="flex-1 p-4 lg:p-8">
+        <main className="flex-1 p-3 sm:p-4 lg:p-8 overflow-x-hidden min-w-0">
           <Outlet />
         </main>
       </div>
