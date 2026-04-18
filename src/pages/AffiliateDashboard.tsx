@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import {
   Copy, Share2, MousePointerClick, ShoppingCart, DollarSign,
   Wallet, ArrowLeft, TrendingUp, Link2, Facebook, Instagram,
-  Music2, BarChart3, ArrowUpRight, Clock
+  Music2, BarChart3, ArrowUpRight, Clock, MessageCircle
 } from "lucide-react";
 
 const AffiliateDashboard = () => {
@@ -73,22 +73,58 @@ const AffiliateDashboard = () => {
 
   const shareFacebook = () => {
     const link = generateLink();
-    if (!link) return;
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`, "_blank");
+    if (!link) { toast.error("Selecione um produto."); return; }
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`, "_blank", "noopener,noreferrer");
   };
 
   const shareInstagram = () => {
     const link = generateLink();
-    if (!link) return;
-    navigator.clipboard.writeText("Confira este produto na Laynani Store! " + link);
-    toast.success("Link copiado! Cole no seu Instagram.");
+    if (!link) { toast.error("Selecione um produto."); return; }
+    const text = `Confira este produto na Laynani Store! ${link}`;
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success("Link copiado! Agora abra o Instagram e cole no seu story ou bio.", { duration: 5000 });
+      // Tentar abrir o Instagram (funciona em dispositivos móveis)
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        window.location.href = "instagram://";
+        // Fallback para o site caso a app não abra
+        setTimeout(() => {
+          window.open("https://www.instagram.com", "_blank", "noopener,noreferrer");
+        }, 1500);
+      } else {
+        window.open("https://www.instagram.com", "_blank", "noopener,noreferrer");
+      }
+    }).catch(() => {
+      toast.error("Não foi possível copiar. Copie o link manualmente.");
+    });
   };
 
   const shareTikTok = () => {
     const link = generateLink();
-    if (!link) return;
-    navigator.clipboard.writeText("Confira este produto na Laynani Store! " + link);
-    toast.success("Link copiado! Cole no seu TikTok.");
+    if (!link) { toast.error("Selecione um produto."); return; }
+    const text = `Confira este produto na Laynani Store! ${link}`;
+    navigator.clipboard.writeText(text).then(() => {
+      toast.success("Link copiado! Agora abra o TikTok e cole na sua bio ou vídeo.", { duration: 5000 });
+      // Tentar abrir o TikTok (funciona em dispositivos móveis)
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        window.location.href = "snssdk1128://";
+        setTimeout(() => {
+          window.open("https://www.tiktok.com", "_blank", "noopener,noreferrer");
+        }, 1500);
+      } else {
+        window.open("https://www.tiktok.com", "_blank", "noopener,noreferrer");
+      }
+    }).catch(() => {
+      toast.error("Não foi possível copiar. Copie o link manualmente.");
+    });
+  };
+
+  const shareWhatsApp = () => {
+    const link = generateLink();
+    if (!link) { toast.error("Selecione um produto."); return; }
+    const text = encodeURIComponent(`Confira este produto na Laynani Store! ${link}`);
+    window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer");
   };
 
   const pendingCommission = commissions.filter((c) => c.status === "pending").reduce((s, c) => s + Number(c.amount_mzn), 0);
@@ -241,7 +277,7 @@ const AffiliateDashboard = () => {
                           <Copy className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                         <Button onClick={shareFacebook} variant="outline" className="h-11 gap-2 text-xs sm:text-sm">
                           <Facebook className="h-4 w-4" /> Facebook
                         </Button>
@@ -250,6 +286,9 @@ const AffiliateDashboard = () => {
                         </Button>
                         <Button onClick={shareTikTok} variant="outline" className="h-11 gap-2 text-xs sm:text-sm">
                           <Music2 className="h-4 w-4" /> TikTok
+                        </Button>
+                        <Button onClick={shareWhatsApp} variant="outline" className="h-11 gap-2 text-xs sm:text-sm text-green-600 border-green-200 hover:bg-green-50">
+                          <MessageCircle className="h-4 w-4" /> WhatsApp
                         </Button>
                       </div>
                     </div>
