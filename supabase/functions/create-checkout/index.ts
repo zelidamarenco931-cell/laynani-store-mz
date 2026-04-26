@@ -15,8 +15,6 @@ Deno.serve(async (req) => {
 
     const { items, shippingCost, successUrl, cancelUrl, customerEmail, metadata } = await req.json();
 
-    // Convert MZN to USD (approximate rate: 1 USD ≈ 64 MZN)
-    // Stripe requires amounts in the currency's smallest unit (cents)
     const MZN_TO_USD = 64;
 
     const lineItems = items.map((item: any) => ({
@@ -26,12 +24,11 @@ Deno.serve(async (req) => {
           name: item.name,
           images: item.image ? [item.image] : [],
         },
-        unit_amount: Math.round((item.price / MZN_TO_USD) * 100), // cents
+        unit_amount: Math.round((item.price / MZN_TO_USD) * 100),
       },
       quantity: item.quantity,
     }));
 
-    // Add shipping as a line item if applicable
     if (shippingCost > 0) {
       lineItems.push({
         price_data: {
@@ -58,7 +55,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error(err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
