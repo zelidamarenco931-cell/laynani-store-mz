@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const stripe = new Stripe(Deno.env.get(sk_test_51T2q6vRok0GMu450NBbxpvdOaD41xmIfT3WpJOCHhQdifIweJUuVSxqzYyxlNq5v7193Y2SaNJtf6Ra6uWnpcbpV00eOJtCqTT) ?? "", {
+    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
       apiVersion: "2024-06-20",
     });
 
