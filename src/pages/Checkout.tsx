@@ -10,12 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Smartphone, ArrowLeft, Building2, Upload, ImageIcon } from "lucide-react";
+import { Smartphone, ArrowLeft, Building2, Upload, ImageIcon, CreditCard } from "lucide-react";
 
 const paymentMethods = [
   { id: "mpesa", label: "M-Pesa", icon: Smartphone, desc: "Envie para 852506942 (Felizarda I.M)" },
   { id: "emola", label: "e-Mola", icon: Smartphone, desc: "Envie para 868214712 (Zelida Isac Marenço)" },
   { id: "bank", label: "Transferência BIM", icon: Building2, desc: "NIB: 000100000109942147557" },
+  { id: "stripe", label: "Cartão / PayPal", icon: CreditCard, desc: "Visa, Mastercard, PayPal (pagamento seguro)" },
 ] as const;
 
 const Checkout = () => {
@@ -30,6 +31,7 @@ const Checkout = () => {
   const [formData, setFormData] = useState({ name: "", phone: "", city: "", bairro: "", reference: "" });
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [stripeLoading, setStripeLoading] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
@@ -57,11 +59,49 @@ const Checkout = () => {
     return data.publicUrl;
   };
 
+
+  const handleStripeCheckout = async () => {
+    if (!province) { toast.error("Selecione a província de entrega."); return; }
+    if (!formData.name || !formData.phone || !formData.city || !formData.bairro) {
+      toast.error("Preencha todos os dados de entrega."); return;
+    }
+    if (!user) { toast.error("Faça login para continuar."); navigate("/login"); return; }
+
+    setStripeLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-stripe-session", {
+        body: {
+          items: items.map(i => ({ name: i.name, price: i.price, quantity: i.quantity, image: i.image })),
+          shippingCost,
+          successUrl: `${window.location.origin}/pedido-sucesso?stripe=true`,
+          cancelUrl: `${window.location.origin}/checkout`,
+          customerEmail: user.email,
+          metadata: {
+            user_id: user.id,
+            province,
+            city: formData.city,
+            bairro: formData.bairro,
+            reference: formData.reference,
+            name: formData.name,
+            phone: formData.phone,
+          }
+        }
+      });
+      if (error || !data?.url) { toast.error("Erro ao iniciar pagamento com cartão."); return; }
+      window.location.href = data.url;
+    } catch {
+      toast.error("Erro ao conectar com Stripe.");
+    } finally {
+      setStripeLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (payment === "stripe") { await handleStripeCheckout(); return; }
     if (!province || !payment) { toast.error("Preencha todos os campos obrigatórios."); return; }
     if (!user) { toast.error("Faça login para continuar."); navigate("/login"); return; }
-    if (!proofFile) { toast.error("Anexe o comprovante de pagamento."); return; }
+    if (!proofFile && payment !== "stripe") { toast.error("Anexe o comprovante de pagamento."); return; }
 
     setUploading(true);
 
@@ -182,7 +222,7 @@ const Checkout = () => {
               </div>
               {/* Submit button visible in summary on desktop */}
               <Button type="submit" size="lg" className="hidden w-full lg:flex" disabled={!user || uploading}>
-                {uploading ? "Enviando..." : "Confirmar Pedido"}
+                {stripeLoading ? "Redirecionando..." : uploading ? "Enviando..." : payment === "stripe" ? "Pagar com Cartão" : "Confirmar Pedido"}
               </Button>
             </div>
           </div>
@@ -276,6 +316,20 @@ const Checkout = () => {
                 </div>
               )}
 
+
+              {payment === "stripe" && (
+                <div className="rounded-lg bg-muted p-3 sm:p-4 text-sm space-y-2 sm:space-y-3">
+                  <p className="font-medium">💳 Pagamento com Cartão / PayPal:</p>
+                  <ul className="space-y-1 text-xs sm:text-sm text-muted-foreground">
+                    <li>✅ Visa, Mastercard, Amex aceites</li>
+                    <li>✅ PayPal aceite</li>
+                    <li>✅ Pagamento 100% seguro via Stripe</li>
+                    <li>💰 Total: <strong className="text-foreground">{grandTotal.toLocaleString("pt-MZ")} MZN</strong></li>
+                  </ul>
+                  <p className="text-xs text-muted-foreground">Será redirecionado para a página segura de pagamento da Stripe.</p>
+                </div>
+              )}
+
               {["mpesa", "emola", "bank"].includes(payment) && (
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-xs sm:text-sm">
@@ -302,7 +356,7 @@ const Checkout = () => {
             {/* Sticky submit button on mobile */}
             <div className="lg:hidden sticky bottom-0 -mx-4 bg-background border-t p-4 shadow-[0_-4px_12px_rgba(0,0,0,0.1)]">
               <Button type="submit" size="lg" className="w-full" disabled={!user || uploading}>
-                {uploading ? "Enviando..." : `Confirmar Pedido • ${grandTotal.toLocaleString("pt-MZ")} MZN`}
+                {stripeLoading ? "Redirecionando..." : uploading ? "Enviando..." : payment === "stripe" ? `Pagar com Cartão • ${grandTotal.toLocaleString("pt-MZ")} MZN` : `Confirmar Pedido • ${grandTotal.toLocaleString("pt-MZ")} MZN`}
               </Button>
             </div>
           </div>

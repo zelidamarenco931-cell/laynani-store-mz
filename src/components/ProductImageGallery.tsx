@@ -221,7 +221,7 @@ const ProductImageGallery = ({ images, productName, isPromoActive, discountPerce
                   aria-roledescription="slide"
                   aria-label={`Imagem ${index + 1} de ${images.length}`}
                 >
-                  <div className="aspect-[4/3] w-full max-w-full overflow-hidden rounded-2xl bg-muted sm:aspect-square">
+                  <div className="aspect-square w-full max-w-full overflow-hidden rounded-2xl bg-white">
                     <div
                       role="button"
                       tabIndex={0}
@@ -242,7 +242,7 @@ const ProductImageGallery = ({ images, productName, isPromoActive, discountPerce
                         loading={index === 0 ? "eager" : "lazy"}
                         draggable={false}
                         className={cn(
-                          "pointer-events-none h-full w-full max-w-full select-none object-contain p-2 transition-transform duration-300 sm:p-4",
+                          "pointer-events-none h-full w-full max-w-full select-none object-contain transition-transform duration-300",
                           slideIsZoomed && "scale-[1.9]",
                         )}
                         style={{
@@ -344,7 +344,7 @@ const ProductImageGallery = ({ images, productName, isPromoActive, discountPerce
               <img
                 src={image}
                 alt={`Miniatura ${index + 1} de ${productName}`}
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain bg-white"
                 loading="lazy"
               />
             </button>

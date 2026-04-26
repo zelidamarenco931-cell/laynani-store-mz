@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
+import SessionManager from "./components/SessionManager";
 import NotFound from "./pages/NotFound";
 
 const Catalog = lazy(() => import("./pages/Catalog"));
@@ -32,7 +33,6 @@ const AffiliateJoin = lazy(() => import("./pages/AffiliateJoin"));
 const AffiliateDashboard = lazy(() => import("./pages/AffiliateDashboard"));
 const OrderSuccess = lazy(() => import("./pages/OrderSuccess"));
 const AdminCustomers = lazy(() => import("./pages/admin/AdminCustomers"));
-const ConfirmEmail = lazy(() => import("./pages/ConfirmEmail"));
 
 const queryClient = new QueryClient();
 
@@ -50,6 +50,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <SessionManager />
             <Suspense fallback={<Loading />}>
               <Routes>
                 <Route path="/" element={<Index />} />
@@ -66,7 +67,6 @@ const App = () => (
                 <Route path="/afiliados" element={<AffiliateJoin />} />
                 <Route path="/afiliados/painel" element={<AffiliateDashboard />} />
                 <Route path="/pedido-sucesso" element={<OrderSuccess />} />
-                <Route path="/confirmar" element={<ConfirmEmail />} />
                 <Route path="/admin" element={<AdminLayout />}>
                   <Route index element={<AdminDashboard />} />
                   <Route path="pedidos" element={<AdminOrders />} />
