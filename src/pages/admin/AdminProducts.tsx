@@ -659,4 +659,4 @@ const AdminProducts = () => {
   );
 };
 
-export default AdminProducts;
+export default AdminProducts
