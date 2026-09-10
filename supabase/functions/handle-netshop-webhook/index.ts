@@ -10,7 +10,6 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const netshopApiKey = Deno.env.get("NETSHOP_API_KEY") ?? "";
 
     console.log(`Processing Netshop webhook event: ${body.event}`);
 
