@@ -20,6 +20,9 @@ Deno.serve(async (req) => {
     const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
     const totalMzn = subtotal + shippingCost;
 
+    console.log(`Creating Netshop payment session for order: ${orderId}`);
+    console.log(`Total: ${totalMzn} MZN`);
+
     // Prepare Netshop payment request
     const paymentPayload = {
       api_key: netshopApiKey,
@@ -54,6 +57,8 @@ Deno.serve(async (req) => {
       body: JSON.stringify(paymentPayload),
     });
 
+    console.log(`Netshop API response status: ${response.status}`);
+
     if (!response.ok) {
       const error = await response.text();
       console.error("Netshop API error:", error);
@@ -63,14 +68,17 @@ Deno.serve(async (req) => {
     const data = await response.json();
 
     if (!data.success || !data.payment_url) {
+      console.error("Invalid response from Netshop:", data);
       throw new Error("Failed to create Netshop payment session");
     }
+
+    console.log(`Payment session created: ${data.payment_id}`);
 
     return new Response(JSON.stringify({ url: data.payment_url, payment_id: data.payment_id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error(err);
+    console.error("Error in create-netshop-session:", err);
     return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
