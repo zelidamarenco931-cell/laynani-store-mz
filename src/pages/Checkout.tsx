@@ -10,13 +10,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Smartphone, ArrowLeft, Building2, Upload, ImageIcon, CreditCard } from "lucide-react";
+import { Smartphone, ArrowLeft, Building2, Upload, ImageIcon, CreditCard, Zap } from "lucide-react";
 
 const paymentMethods = [
   { id: "mpesa", label: "M-Pesa", icon: Smartphone, desc: "Envie para 852506942 (Felizarda I.M)" },
   { id: "emola", label: "e-Mola", icon: Smartphone, desc: "Envie para 868214712 (Zelida Isac Marenço)" },
   { id: "bank", label: "Transferência BIM", icon: Building2, desc: "NIB: 000100000109942147557" },
-  { id: "stripe", label: "Cartão / PayPal", icon: CreditCard, desc: "Visa, Mastercard, PayPal (pagamento seguro)" },
+  { id: "netshop", label: "Netshop", icon: Zap, desc: "Pagamento automático seguro - Múltiplas opções" },
 ] as const;
 
 const Checkout = () => {
@@ -31,7 +31,7 @@ const Checkout = () => {
   const [formData, setFormData] = useState({ name: "", phone: "", city: "", bairro: "", reference: "" });
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [stripeLoading, setStripeLoading] = useState(false);
+  const [netshopLoading, setNetshopLoading] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("success") === "true") {
@@ -59,25 +59,19 @@ const Checkout = () => {
     return data.publicUrl;
   };
 
-
-  const handleStripeCheckout = async () => {
-    if (!province) { toast.error("Selecione a província de entrega."); return; }
-    if (!formData.name || !formData.phone || !formData.city || !formData.bairro) {
-      toast.error("Preencha todos os dados de entrega."); return;
-    }
-    if (!user) { toast.error("Faça login para continuar."); navigate("/login"); return; }
-
-    setStripeLoading(true);
+  const handleNetshopCheckout = async (orderId: string) => {
+    setNetshopLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("create-stripe-session", {
+      const { data, error } = await supabase.functions.invoke("create-netshop-session", {
         body: {
           items: items.map(i => ({ name: i.name, price: i.price, quantity: i.quantity, image: i.image })),
           shippingCost,
-          successUrl: `${window.location.origin}/pedido-sucesso?stripe=true`,
+          successUrl: `${window.location.origin}/pedido-sucesso?netshop=true&order=${orderId}`,
           cancelUrl: `${window.location.origin}/checkout`,
-          customerEmail: user.email,
+          customerEmail: user?.email,
+          orderId,
           metadata: {
-            user_id: user.id,
+            user_id: user?.id,
             province,
             city: formData.city,
             bairro: formData.bairro,
@@ -87,21 +81,20 @@ const Checkout = () => {
           }
         }
       });
-      if (error || !data?.url) { toast.error("Erro ao iniciar pagamento com cartão."); return; }
+      if (error || !data?.url) { toast.error("Erro ao iniciar pagamento com Netshop."); return; }
       window.location.href = data.url;
     } catch {
-      toast.error("Erro ao conectar com Stripe.");
+      toast.error("Erro ao conectar com Netshop.");
     } finally {
-      setStripeLoading(false);
+      setNetshopLoading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (payment === "stripe") { await handleStripeCheckout(); return; }
     if (!province || !payment) { toast.error("Preencha todos os campos obrigatórios."); return; }
     if (!user) { toast.error("Faça login para continuar."); navigate("/login"); return; }
-    if (!proofFile && payment !== "stripe") { toast.error("Anexe o comprovante de pagamento."); return; }
+    if (!proofFile && !["netshop"].includes(payment)) { toast.error("Anexe o comprovante de pagamento."); return; }
 
     setUploading(true);
 
@@ -112,19 +105,49 @@ const Checkout = () => {
       if (aff && aff.user_id !== user.id) affiliateId = aff.id;
     }
 
-    const paymentMethodMap: Record<string, string> = { mpesa: "mpesa", emola: "mpesa", bank: "manual" };
+    const paymentMethodMap: Record<string, string> = { mpesa: "mpesa", emola: "mpesa", bank: "manual", netshop: "netshop" };
 
     const { data: order, error } = await supabase.from("orders").insert({
       user_id: user.id,
       total_mzn: grandTotal,
-      status: "pending" as const,
-      payment_method: paymentMethodMap[payment] as "mpesa" | "manual",
+      status: payment === "netshop" ? "processing" : "pending",
+      payment_method: paymentMethodMap[payment] as "mpesa" | "manual" | "netshop",
       shipping_address: { province, city: formData.city, bairro: formData.bairro, reference: formData.reference, name: formData.name, phone: formData.phone, payment_detail: payment },
       ...(affiliateId ? { affiliate_id: affiliateId } : {}),
     } as any).select().single();
 
     if (error || !order) { toast.error("Erro ao criar pedido."); setUploading(false); return; }
 
+    // Handle Netshop checkout
+    if (payment === "netshop") {
+      const orderItems = items.map((item) => ({
+        order_id: order.id,
+        product_id: item.id,
+        quantity: item.quantity,
+        price_mzn: item.price,
+      }));
+      await supabase.from("order_items").insert(orderItems);
+
+      if (affiliateId) {
+        const { data: affData } = await supabase.from("affiliates").select("commission_rate").eq("id", affiliateId).single();
+        const rate = affData?.commission_rate || 0.10;
+        await supabase.from("affiliate_commissions").insert({
+          affiliate_id: affiliateId,
+          order_id: order.id,
+          amount_mzn: grandTotal * Number(rate),
+          status: "pending",
+        } as any);
+        localStorage.removeItem("affiliate_ref");
+      }
+
+      setUploading(false);
+      clearCart();
+      toast.success("Redirecionando para pagamento Netshop...");
+      await handleNetshopCheckout(order.id);
+      return;
+    }
+
+    // Handle manual payment methods (M-Pesa, e-Mola, Bank Transfer)
     const proofUrl = await uploadProof(order.id);
     if (proofUrl) {
       await supabase.from("orders").update({ payment_proof_url: proofUrl }).eq("id", order.id);
@@ -192,7 +215,7 @@ const Checkout = () => {
 
         {!user && (
           <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 p-3 sm:mb-6 sm:p-4">
-            <p className="text-sm">Precisa de uma conta para finalizar. <Link to="/login" className="font-medium text-primary hover:underline">Entrar</Link> ou <Link to="/registrar" className="font-medium text-primary hover:underline">Criar Conta</Link></p>
+            <p className="text-sm">Precisa de uma conta para finalizar. <Link to="/login" className="font-medium text-primary hover:underline">Entrar</Link> ou <Link to="/registrar" className="font-medium text-primary hover:underline">Registar</Link></p>
           </div>
         )}
 
@@ -221,8 +244,8 @@ const Checkout = () => {
                 </div>
               </div>
               {/* Submit button visible in summary on desktop */}
-              <Button type="submit" size="lg" className="hidden w-full lg:flex" disabled={!user || uploading}>
-                {stripeLoading ? "Redirecionando..." : uploading ? "Enviando..." : payment === "stripe" ? "Pagar com Cartão" : "Confirmar Pedido"}
+              <Button type="submit" size="lg" className="hidden w-full lg:flex" disabled={!user || uploading || netshopLoading}>
+                {netshopLoading ? "Redirecionando..." : uploading ? "Enviando..." : payment === "netshop" ? "Pagar com Netshop" : "Confirmar Pedido"}
               </Button>
             </div>
           </div>
@@ -269,7 +292,8 @@ const Checkout = () => {
               <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2">
                 {paymentMethods.map((m) => (
                   <button type="button" key={m.id} onClick={() => { setPayment(m.id); setProofFile(null); }}
-                    className={`flex items-start gap-3 rounded-lg border p-3 sm:p-4 text-left transition-all ${payment === m.id ? "border-primary bg-primary/5 shadow-card" : "hover:border-primary/30"}`}>
+                    className={`flex items-start gap-3 rounded-lg border p-3 sm:p-4 text-left transition-all ${payment === m.id ? "border-primary bg-primary/5 shadow-card" : "hover:border-primary/50"}`}
+                  >
                     <m.icon className={`mt-0.5 h-5 w-5 shrink-0 ${payment === m.id ? "text-primary" : "text-muted-foreground"}`} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium">{m.label}</p>
@@ -316,17 +340,17 @@ const Checkout = () => {
                 </div>
               )}
 
-
-              {payment === "stripe" && (
+              {payment === "netshop" && (
                 <div className="rounded-lg bg-muted p-3 sm:p-4 text-sm space-y-2 sm:space-y-3">
-                  <p className="font-medium">💳 Pagamento com Cartão / PayPal:</p>
+                  <p className="font-medium">⚡ Pagamento com Netshop (Automático):</p>
                   <ul className="space-y-1 text-xs sm:text-sm text-muted-foreground">
-                    <li>✅ Visa, Mastercard, Amex aceites</li>
-                    <li>✅ PayPal aceite</li>
-                    <li>✅ Pagamento 100% seguro via Stripe</li>
+                    <li>✅ Pagamento automático e seguro</li>
+                    <li>✅ Múltiplas opções de pagamento</li>
+                    <li>✅ Confirmação instantânea</li>
+                    <li>✅ Sem necessidade de comprovante</li>
                     <li>💰 Total: <strong className="text-foreground">{grandTotal.toLocaleString("pt-MZ")} MZN</strong></li>
                   </ul>
-                  <p className="text-xs text-muted-foreground">Será redirecionado para a página segura de pagamento da Stripe.</p>
+                  <p className="text-xs text-muted-foreground">Será redirecionado para a página segura de pagamento do Netshop.</p>
                 </div>
               )}
 
@@ -355,8 +379,8 @@ const Checkout = () => {
 
             {/* Sticky submit button on mobile */}
             <div className="lg:hidden sticky bottom-0 -mx-4 bg-background border-t p-4 shadow-[0_-4px_12px_rgba(0,0,0,0.1)]">
-              <Button type="submit" size="lg" className="w-full" disabled={!user || uploading}>
-                {stripeLoading ? "Redirecionando..." : uploading ? "Enviando..." : payment === "stripe" ? `Pagar com Cartão • ${grandTotal.toLocaleString("pt-MZ")} MZN` : `Confirmar Pedido • ${grandTotal.toLocaleString("pt-MZ")} MZN`}
+              <Button type="submit" size="lg" className="w-full" disabled={!user || uploading || netshopLoading}>
+                {netshopLoading ? "Redirecionando..." : uploading ? "Enviando..." : payment === "netshop" ? `Pagar com Netshop • ${grandTotal.toLocaleString("pt-MZ")} MZN` : `Confirmar Pedido • ${grandTotal.toLocaleString("pt-MZ")} MZN`}
               </Button>
             </div>
           </div>
