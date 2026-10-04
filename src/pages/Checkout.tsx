@@ -13,10 +13,16 @@ import { toast } from "sonner";
 import { Smartphone, ArrowLeft, Upload, ImageIcon, Zap } from "lucide-react";
 
 const paymentMethods = [
-  { id: "mpesa", label: "M-Pesa", icon: Smartphone, desc: "Envie para 852506942 (Felizarda I.M)" },
+  { id: "mpesa_auto", label: "M-Pesa", icon: Smartphone, desc: "Pagamento automático - confirme no telemóvel" },
   { id: "emola", label: "e-Mola", icon: Smartphone, desc: "Envie para 868214712 (Zelida Isac Marenço)" },
-  { id: "debitopay", label: "Débito Pay", icon: Zap, desc: "Pagamento automático seguro - Múltiplas opções" },
+  { id: "debitopay", label: "Cartão Visa / Mastercard", icon: Zap, desc: "Pagamento automático seguro (Débito Pay)" },
 ] as const;
+
+// Métodos automáticos (confirmados pelo Débito Pay, sem comprovante)
+const AUTO_METHODS = ["mpesa_auto", "debitopay"];
+
+const normalizeMpesaPhone = (value: string) => value.replace(/\D/g, "").replace(/^258/, "");
+const isValidMpesaPhone = (value: string) => /^8[45]\d{7}$/.test(normalizeMpesaPhone(value));
 
 const Checkout = () => {
   const { items, totalPrice, clearCart } = useCart();
@@ -28,6 +34,7 @@ const Checkout = () => {
   const [payment, setPayment] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [formData, setFormData] = useState({ name: "", phone: "", city: "", bairro: "", reference: "" });
+  const [mpesaPhone, setMpesaPhone] = useState("");
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [debitopayLoading, setDebitopayLoading] = useState(false);
@@ -66,13 +73,16 @@ const Checkout = () => {
     }
   };
 
-  const handleDebitopayCheckout = async (orderId: string) => {
+  // Pagamento automático pelo Débito Pay: cartão (redireciona) ou M-Pesa (confirmação no telemóvel)
+  const handleDebitopayCheckout = async (orderId: string, method: "card" | "mpesa", phone?: string) => {
     setDebitopayLoading(true);
     try {
       // O valor do pedido é lido no servidor a partir da base de dados.
       const { data, error } = await supabase.functions.invoke("create-debitopay-session", {
         body: {
           orderId,
+          method,
+          phone,
           successUrl: `${window.location.origin}/pedido-sucesso?debitopay=true&order=${orderId}`,
           cancelUrl: `${window.location.origin}/checkout`,
           customerEmail: user?.email,
@@ -81,14 +91,30 @@ const Checkout = () => {
 
       if (error) {
         console.error("Débito Pay error:", error);
+        let message = "Erro ao iniciar o pagamento.";
         try {
           const detail = await (error as any).context?.json?.();
-          if (detail) console.error("Débito Pay detalhe:", detail);
+          if (detail) {
+            console.error("Débito Pay detalhe:", detail);
+            if (detail.message) message = detail.message;
+          }
         } catch (_) {
           /* sem detalhe */
         }
-        toast.error("Erro ao iniciar pagamento com Débito Pay.");
+        toast.error(message);
         setDebitopayLoading(false);
+        return;
+      }
+
+      if (method === "mpesa") {
+        if (!data?.success) {
+          toast.error(data?.message || "O pagamento M-Pesa não foi concluído.");
+          setDebitopayLoading(false);
+          return;
+        }
+        // M-Pesa confirma na hora: esvazia o carrinho e mostra o resultado
+        clearCart();
+        navigate(`/pedido-sucesso?debitopay=true&order=${orderId}`);
         return;
       }
 
@@ -102,7 +128,7 @@ const Checkout = () => {
       window.location.href = data.url;
     } catch (error) {
       console.error("Error calling Débito Pay:", error);
-      toast.error("Erro ao conectar com Débito Pay.");
+      toast.error("Erro ao conectar com o Débito Pay.");
       setDebitopayLoading(false);
     }
   };
@@ -121,7 +147,12 @@ const Checkout = () => {
       return;
     }
 
-    if (!proofFile && !["debitopay"].includes(payment)) {
+    if (payment === "mpesa_auto" && !isValidMpesaPhone(mpesaPhone)) {
+      toast.error("Número M-Pesa inválido. Deve começar por 84 ou 85.");
+      return;
+    }
+
+    if (!proofFile && !AUTO_METHODS.includes(payment)) {
       toast.error("Anexe o comprovante de pagamento.");
       return;
     }
@@ -146,10 +177,12 @@ const Checkout = () => {
       }
 
       const paymentMethodMap: Record<string, string> = {
-        mpesa: "mpesa",
+        mpesa_auto: "debitopay",
         emola: "mpesa",
         debitopay: "debitopay",
       };
+
+      const isAuto = AUTO_METHODS.includes(payment);
 
       // A comissão do afiliado é criada pelo servidor (gatilho na base de dados)
       // e aprovada automaticamente quando o pedido passa a "paid".
@@ -158,7 +191,7 @@ const Checkout = () => {
         .insert({
           user_id: user.id,
           total_mzn: grandTotal,
-          status: payment === "debitopay" ? "processing" : "pending",
+          status: isAuto ? "processing" : "pending",
           payment_method: paymentMethodMap[payment] as "mpesa" | "debitopay",
           shipping_address: {
             province,
@@ -188,18 +221,23 @@ const Checkout = () => {
         price_mzn: item.price,
       }));
 
-      // Handle Débito Pay checkout
-      if (payment === "debitopay") {
+      // Pagamentos automáticos (Débito Pay)
+      if (isAuto) {
         await supabase.from("order_items").insert(orderItems);
 
         if (affiliateId) localStorage.removeItem("affiliate_ref");
 
         setUploading(false);
-        await handleDebitopayCheckout(order.id);
+        if (payment === "mpesa_auto") {
+          toast.info("Confirme o pagamento no seu telemóvel (introduza o PIN do M-Pesa).", { duration: 15000 });
+          await handleDebitopayCheckout(order.id, "mpesa", normalizeMpesaPhone(mpesaPhone));
+        } else {
+          await handleDebitopayCheckout(order.id, "card");
+        }
         return;
       }
 
-      // Handle manual payment methods (M-Pesa, e-Mola)
+      // Pagamento manual (e-Mola) com comprovante
       const proofUrl = await uploadProof(order.id);
 
       if (proofUrl) {
@@ -249,6 +287,15 @@ const Checkout = () => {
       </div>
     );
   }
+
+  const submitLabel = (withTotal: boolean) => {
+    const total = withTotal ? ` • ${grandTotal.toLocaleString("pt-MZ")} MZN` : "";
+    if (debitopayLoading) return payment === "mpesa_auto" ? "Confirme no telemóvel..." : "Redirecionando...";
+    if (uploading) return "Enviando...";
+    if (payment === "mpesa_auto") return `Pagar com M-Pesa${total}`;
+    if (payment === "debitopay") return `Pagar com cartão${total}`;
+    return `Confirmar Pedido${total}`;
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -320,13 +367,7 @@ const Checkout = () => {
                 className="hidden w-full lg:flex"
                 disabled={!user || uploading || debitopayLoading}
               >
-                {debitopayLoading
-                  ? "Redirecionando..."
-                  : uploading
-                  ? "Enviando..."
-                  : payment === "debitopay"
-                  ? "Pagar com Débito Pay"
-                  : "Confirmar Pedido"}
+                {submitLabel(false)}
               </Button>
             </div>
           </div>
@@ -409,6 +450,7 @@ const Checkout = () => {
                     onClick={() => {
                       setPayment(m.id);
                       setProofFile(null);
+                      if (m.id === "mpesa_auto" && !mpesaPhone) setMpesaPhone(formData.phone);
                     }}
                     className={`flex items-start gap-3 rounded-lg border p-3 sm:p-4 text-left transition-all ${
                       payment === m.id
@@ -423,28 +465,34 @@ const Checkout = () => {
                     />
                     <div className="min-w-0">
                       <p className="text-sm font-medium">{m.label}</p>
-                      <p className="text-xs text-muted-foreground break-all">{m.desc}</p>
+                      <p className="text-xs text-muted-foreground break-words">{m.desc}</p>
                     </div>
                   </button>
                 ))}
               </div>
 
-              {payment === "mpesa" && (
-                <div className="rounded-lg bg-muted p-3 sm:p-4 text-sm space-y-2 sm:space-y-3">
-                  <p className="font-medium">📱 Instruções M-Pesa:</p>
+              {payment === "mpesa_auto" && (
+                <div className="rounded-lg bg-muted p-3 sm:p-4 text-sm space-y-3">
+                  <p className="font-medium">📱 M-Pesa (automático):</p>
+                  <div className="space-y-1">
+                    <Label className="text-xs sm:text-sm">Número M-Pesa que vai pagar *</Label>
+                    <Input
+                      required
+                      inputMode="numeric"
+                      value={mpesaPhone}
+                      onChange={(e) => setMpesaPhone(e.target.value)}
+                      placeholder="84 XXX XXXX ou 85 XXX XXXX"
+                    />
+                  </div>
                   <ol className="list-decimal list-inside space-y-1 text-xs sm:text-sm text-muted-foreground">
-                    <li>Abra o M-Pesa no seu telefone</li>
+                    <li>Toque em "Pagar com M-Pesa"</li>
+                    <li>Vai aparecer um pedido no seu telemóvel</li>
+                    <li>Introduza o PIN do M-Pesa para confirmar</li>
                     <li>
-                      Envie <strong className="text-foreground">{grandTotal.toLocaleString("pt-MZ")} MZN</strong>
+                      Total: <strong className="text-foreground">{grandTotal.toLocaleString("pt-MZ")} MZN</strong>
                     </li>
-                    <li>
-                      Para: <strong className="text-foreground">852 506 942</strong>
-                    </li>
-                    <li>
-                      Nome: <strong className="text-foreground">Felizarda I.M</strong>
-                    </li>
-                    <li>Tire screenshot e anexe abaixo</li>
                   </ol>
+                  <p className="text-xs text-muted-foreground">Sem comprovante: o pedido é confirmado automaticamente.</p>
                 </div>
               )}
 
@@ -469,10 +517,9 @@ const Checkout = () => {
 
               {payment === "debitopay" && (
                 <div className="rounded-lg bg-muted p-3 sm:p-4 text-sm space-y-2 sm:space-y-3">
-                  <p className="font-medium">⚡ Pagamento com Débito Pay (Automático):</p>
+                  <p className="font-medium">⚡ Cartão Visa / Mastercard (Automático):</p>
                   <ul className="space-y-1 text-xs sm:text-sm text-muted-foreground">
                     <li>✅ Pagamento automático e seguro</li>
-                    <li>✅ Múltiplas opções de pagamento</li>
                     <li>✅ Confirmação instantânea</li>
                     <li>✅ Sem necessidade de comprovante</li>
                     <li>
@@ -485,7 +532,7 @@ const Checkout = () => {
                 </div>
               )}
 
-              {["mpesa", "emola"].includes(payment) && (
+              {payment === "emola" && (
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-xs sm:text-sm">
                     <Upload className="h-4 w-4" /> Comprovante de Pagamento *
@@ -513,13 +560,7 @@ const Checkout = () => {
             {/* Mobile button */}
             <div className="lg:hidden sticky bottom-0 -mx-4 bg-background border-t p-4 shadow-[0_-4px_12px_rgba(0,0,0,0.1)]">
               <Button type="submit" size="lg" className="w-full" disabled={!user || uploading || debitopayLoading}>
-                {debitopayLoading
-                  ? "Redirecionando..."
-                  : uploading
-                  ? "Enviando..."
-                  : payment === "debitopay"
-                  ? `Pagar com Débito Pay • ${grandTotal.toLocaleString("pt-MZ")} MZN`
-                  : `Confirmar Pedido • ${grandTotal.toLocaleString("pt-MZ")} MZN`}
+                {submitLabel(true)}
               </Button>
             </div>
           </div>
