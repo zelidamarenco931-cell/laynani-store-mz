@@ -70,28 +70,24 @@ const Checkout = () => {
   const handleDebitopayCheckout = async (orderId: string) => {
     setDebitopayLoading(true);
     try {
+      // O valor do pedido é lido no servidor a partir da base de dados.
       const { data, error } = await supabase.functions.invoke("create-debitopay-session", {
         body: {
-          items: items.map(i => ({ name: i.name, price: i.price, quantity: i.quantity, image: i.image })),
-          shippingCost,
+          orderId,
           successUrl: `${window.location.origin}/pedido-sucesso?debitopay=true&order=${orderId}`,
           cancelUrl: `${window.location.origin}/checkout`,
           customerEmail: user?.email,
-          orderId,
-          metadata: {
-            user_id: user?.id,
-            province,
-            city: formData.city,
-            bairro: formData.bairro,
-            reference: formData.reference,
-            name: formData.name,
-            phone: formData.phone,
-          }
         }
       });
 
       if (error) {
         console.error("Débito Pay error:", error);
+        try {
+          const detail = await (error as any).context?.json?.();
+          if (detail) console.error("Débito Pay detalhe:", detail);
+        } catch (_) {
+          /* sem detalhe */
+        }
         toast.error("Erro ao iniciar pagamento com Débito Pay.");
         setDebitopayLoading(false);
         return;
@@ -103,6 +99,7 @@ const Checkout = () => {
         return;
       }
 
+      // O carrinho só é esvaziado depois do pagamento (página de sucesso)
       window.location.href = data.url;
     } catch (error) {
       console.error("Error calling Débito Pay:", error);
@@ -152,17 +149,19 @@ const Checkout = () => {
       const paymentMethodMap: Record<string, string> = {
         mpesa: "mpesa",
         emola: "mpesa",
-        bank: "manual",
+        bank: "bank_transfer",
         debitopay: "debitopay",
       };
 
+      // A comissão do afiliado é criada pelo servidor (gatilho na base de dados)
+      // e aprovada automaticamente quando o pedido passa a "paid".
       const { data: order, error } = await supabase
         .from("orders")
         .insert({
           user_id: user.id,
           total_mzn: grandTotal,
           status: payment === "debitopay" ? "processing" : "pending",
-          payment_method: paymentMethodMap[payment] as "mpesa" | "manual" | "debitopay",
+          payment_method: paymentMethodMap[payment] as "mpesa" | "bank_transfer" | "debitopay",
           shipping_address: {
             province,
             city: formData.city,
@@ -184,39 +183,20 @@ const Checkout = () => {
         return;
       }
 
+      const orderItems = items.map((item) => ({
+        order_id: order.id,
+        product_id: item.id,
+        quantity: item.quantity,
+        price_mzn: item.price,
+      }));
+
       // Handle Débito Pay checkout
       if (payment === "debitopay") {
-        const orderItems = items.map((item) => ({
-          order_id: order.id,
-          product_id: item.id,
-          quantity: item.quantity,
-          price_mzn: item.price,
-        }));
-
         await supabase.from("order_items").insert(orderItems);
 
-        if (affiliateId) {
-          const { data: affData } = await supabase
-            .from("affiliates")
-            .select("commission_rate")
-            .eq("id", affiliateId)
-            .single();
-
-          const rate = affData?.commission_rate || 0.1;
-
-          await supabase.from("affiliate_commissions").insert({
-            affiliate_id: affiliateId,
-            order_id: order.id,
-            amount_mzn: grandTotal * Number(rate),
-            status: "pending",
-          } as any);
-
-          localStorage.removeItem("affiliate_ref");
-        }
+        if (affiliateId) localStorage.removeItem("affiliate_ref");
 
         setUploading(false);
-        clearCart();
-        toast.success("Redirecionando para pagamento Débito Pay...");
         await handleDebitopayCheckout(order.id);
         return;
       }
@@ -228,33 +208,9 @@ const Checkout = () => {
         await supabase.from("orders").update({ payment_proof_url: proofUrl }).eq("id", order.id);
       }
 
-      const orderItems = items.map((item) => ({
-        order_id: order.id,
-        product_id: item.id,
-        quantity: item.quantity,
-        price_mzn: item.price,
-      }));
-
       await supabase.from("order_items").insert(orderItems);
 
-      if (affiliateId) {
-        const { data: affData } = await supabase
-          .from("affiliates")
-          .select("commission_rate")
-          .eq("id", affiliateId)
-          .single();
-
-        const rate = affData?.commission_rate || 0.1;
-
-        await supabase.from("affiliate_commissions").insert({
-          affiliate_id: affiliateId,
-          order_id: order.id,
-          amount_mzn: grandTotal * Number(rate),
-          status: "pending",
-        } as any);
-
-        localStorage.removeItem("affiliate_ref");
-      }
+      if (affiliateId) localStorage.removeItem("affiliate_ref");
 
       setUploading(false);
       clearCart();
