@@ -7,12 +7,13 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 // Segredos a configurar no Supabase (Edge Functions > Secrets)
 const apiKey = Deno.env.get("DEBITOPAY_API_KEY"); // sk_live_...
 const merchantId = Deno.env.get("DEBITOPAY_MERCHANT_ID"); // UUID do merchant
-const walletCode = Deno.env.get("DEBITOPAY_WALLET_CODE"); // código de 5 dígitos da carteira Visa/Mastercard (MZN)
+const cardWalletCode = Deno.env.get("DEBITOPAY_WALLET_CODE"); // carteira Visa/Mastercard (MZN)
+const mpesaWalletCode = Deno.env.get("DEBITOPAY_MPESA_WALLET_CODE"); // carteira M-Pesa (MZN)
 const apiBase =
   Deno.env.get("DEBITOPAY_API_URL") ??
   "https://gyqoaningqhurhvdugne.supabase.co/functions/v1";
 
-const MIN_CARD_AMOUNT_MZN = 50;
+const MIN_AMOUNT_MZN = { card: 50, mpesa: 10 } as const;
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -35,14 +36,22 @@ serve(async (req) => {
   }
 
   try {
+    const body = await req.json();
+    const { orderId, successUrl, customerEmail, phone } = body;
+    const method: "card" | "mpesa" = body.method === "mpesa" ? "mpesa" : "card";
+    const walletCode = method === "mpesa" ? mpesaWalletCode : cardWalletCode;
+
     const missing = [
       ["DEBITOPAY_API_KEY", apiKey],
       ["DEBITOPAY_MERCHANT_ID", merchantId],
-      ["DEBITOPAY_WALLET_CODE", walletCode],
+      [method === "mpesa" ? "DEBITOPAY_MPESA_WALLET_CODE" : "DEBITOPAY_WALLET_CODE", walletCode],
     ].filter(([, v]) => !v).map(([k]) => k);
     if (missing.length) {
       console.error("Segredos em falta:", missing.join(", "));
-      return json({ success: false, error: "Débito Pay não configurado.", missing }, 500);
+      return json(
+        { success: false, error: "Débito Pay não configurado.", message: "Este método de pagamento ainda não está disponível.", missing },
+        500,
+      );
     }
 
     // 1. Autenticar o utilizador
@@ -56,12 +65,11 @@ serve(async (req) => {
     const user = userData.user;
 
     // 2. Ler pedido (o valor vem da base de dados, não do cliente)
-    const { orderId, successUrl, customerEmail } = await req.json();
     if (!orderId) return json({ success: false, error: "orderId em falta." }, 400);
 
     const { data: order, error: orderError } = await supabase
       .from("orders")
-      .select("id, user_id, total_mzn, shipping_address")
+      .select("id, user_id, total_mzn, shipping_address, status")
       .eq("id", orderId)
       .single();
 
@@ -71,19 +79,36 @@ serve(async (req) => {
     if (order.user_id !== user.id) {
       return json({ success: false, error: "Pedido não pertence ao utilizador." }, 403);
     }
+    if (!["pending", "processing"].includes(order.status)) {
+      return json({ success: false, error: "Pedido já processado.", message: "Este pedido já foi processado." }, 409);
+    }
 
     const amount = Number(order.total_mzn);
     if (!amount || amount <= 0) {
       return json({ success: false, error: "Valor do pedido inválido." }, 400);
     }
-    if (amount < MIN_CARD_AMOUNT_MZN) {
+    const min = MIN_AMOUNT_MZN[method];
+    if (amount < min) {
       return json(
-        { success: false, error: `Valor mínimo para cartão: ${MIN_CARD_AMOUNT_MZN} MZN.` },
+        { success: false, error: `Valor mínimo: ${min} MZN.`, message: `O valor mínimo para este método é ${min} MZN.` },
         400,
       );
     }
 
-    // 3. URL de retorno: só aceitar a do próprio site
+    // 3. Telefone M-Pesa (84 ou 85)
+    let msisdn: string | undefined;
+    if (method === "mpesa") {
+      const digits = String(phone ?? "").replace(/\D/g, "").replace(/^258/, "");
+      if (!/^8[45]\d{7}$/.test(digits)) {
+        return json(
+          { success: false, error: "Número M-Pesa inválido.", message: "Número M-Pesa inválido. Deve começar por 84 ou 85." },
+          400,
+        );
+      }
+      msisdn = `258${digits}`;
+    }
+
+    // 4. URL de retorno (só cartão): apenas a do próprio site
     const siteOrigin = req.headers.get("origin") || "";
     let returnUrl = `${siteOrigin}/pedido-sucesso?debitopay=true&order=${orderId}`;
     try {
@@ -93,11 +118,11 @@ serve(async (req) => {
       }
     } catch (_) { /* usar fallback */ }
 
-    // 4. Criar cobrança no payment-orchestrator (Visa/Mastercard - Hosted Checkout)
+    // 5. Criar cobrança no payment-orchestrator
     const ship = (order.shipping_address ?? {}) as Record<string, string>;
-    const payload = {
+    const payload: Record<string, unknown> = {
       action: "process",
-      payment_method: "visa_mastercard",
+      payment_method: method === "mpesa" ? "mpesa" : "visa_mastercard",
       merchant_id: merchantId,
       wallet_code: walletCode,
       amount, // MZN inteiros (não cêntimos)
@@ -106,23 +131,24 @@ serve(async (req) => {
       source_id: orderId,
       customer_name: ship.name || user.email || "Cliente",
       customer_email: customerEmail || user.email,
-      customer_phone: ship.phone,
-      return_url: returnUrl,
+      customer_phone: msisdn ?? ship.phone,
     };
+    if (method === "mpesa") payload.phone = msisdn;
+    else payload.return_url = returnUrl;
 
     const clientIp = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim();
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Accept: "application/json",
       Authorization: `Bearer ${apiKey}`,
-      "X-Idempotency-Key": orderId,
+      "X-Idempotency-Key": `${orderId}:${method}`,
       "X-Customer-Origin": `${siteOrigin}/checkout`,
     };
     if (clientIp) headers["X-Customer-IP"] = clientIp;
     const ua = req.headers.get("user-agent");
     if (ua) headers["X-Customer-User-Agent"] = ua;
 
-    console.log("Debito Pay: criar cobrança", { orderId, amount });
+    console.log("Debito Pay: criar cobrança", { orderId, amount, method });
 
     const response = await fetch(`${apiBase}/payment-orchestrator`, {
       method: "POST",
@@ -134,25 +160,8 @@ serve(async (req) => {
     let data: any = null;
     try { data = JSON.parse(text); } catch (_) { /* tratado abaixo */ }
 
-    if (!response.ok || !data?.success) {
-      console.error("Debito Pay erro:", response.status, text);
-      return json(
-        {
-          success: false,
-          error: data?.error || `Débito Pay respondeu ${response.status}`,
-          provider_status: response.status,
-        },
-        502,
-      );
-    }
-
-    if (!data.checkout_url) {
-      console.error("Sem checkout_url na resposta:", text);
-      return json({ success: false, error: "Débito Pay não devolveu URL de pagamento." }, 502);
-    }
-
-    // 5. Guardar o payment_id (usado pelo webhook para encontrar o pedido)
-    if (data.payment_id) {
+    // Guardar o payment_id sempre que existir (o webhook usa-o para encontrar o pedido)
+    if (data?.payment_id) {
       const { error: updateError } = await supabase
         .from("orders")
         .update({ debitopay_payment_id: String(data.payment_id) })
@@ -160,7 +169,56 @@ serve(async (req) => {
       if (updateError) console.error("Erro ao guardar debitopay_payment_id:", updateError);
     }
 
-    return json({ success: true, url: data.checkout_url, payment_id: data.payment_id });
+    if (!response.ok || !data?.success) {
+      console.error("Debito Pay erro:", response.status, text);
+      return json(
+        {
+          success: false,
+          error: data?.error || `Débito Pay respondeu ${response.status}`,
+          message: method === "mpesa"
+            ? "O pagamento M-Pesa não foi concluído. Verifique o número, o saldo e o PIN e tente novamente."
+            : "Não foi possível iniciar o pagamento. Tente novamente.",
+          provider_status: response.status,
+        },
+        502,
+      );
+    }
+
+    // ---- M-Pesa: confirmação síncrona ----
+    if (method === "mpesa") {
+      if (data.status === "success") {
+        // Idempotente com o webhook: só mexe em pedidos ainda por confirmar.
+        // O gatilho da base de dados aprova a comissão do afiliado.
+        const { error: paidError } = await supabase
+          .from("orders")
+          .update({ status: "paid" })
+          .eq("id", orderId)
+          .in("status", ["pending", "processing"]);
+        if (paidError) console.error("Erro ao marcar pedido como pago:", paidError);
+        return json({ success: true, method: "mpesa", status: "success", payment_id: data.payment_id });
+      }
+      if (data.status === "pending") {
+        // Aguarda o webhook payment.completed / payment.failed
+        return json({ success: true, method: "mpesa", status: "pending", payment_id: data.payment_id });
+      }
+      console.error("M-Pesa estado inesperado:", text);
+      return json(
+        {
+          success: false,
+          error: `Estado M-Pesa: ${data.status}`,
+          message: "O pagamento M-Pesa não foi concluído. Verifique o número, o saldo e o PIN e tente novamente.",
+        },
+        502,
+      );
+    }
+
+    // ---- Cartão: redirecionar para o Hosted Checkout ----
+    if (!data.checkout_url) {
+      console.error("Sem checkout_url na resposta:", text);
+      return json({ success: false, error: "Débito Pay não devolveu URL de pagamento.", message: "Não foi possível iniciar o pagamento. Tente novamente." }, 502);
+    }
+
+    return json({ success: true, method: "card", url: data.checkout_url, payment_id: data.payment_id });
   } catch (error) {
     console.error("Error:", error);
     return json(
