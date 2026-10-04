@@ -6,18 +6,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import {
   CheckCircle, XCircle, Eye, Truck, Package, MessageCircle, Search, RefreshCw,
-  ChevronDown, ChevronUp, MapPin, Clock, Wallet, ShoppingBag,
+  ChevronDown, ChevronUp, MapPin, Clock, Wallet, ShoppingBag, Zap,
 } from "lucide-react";
 
 type OrderStatus = "pending" | "paid" | "shipped" | "delivered" | "cancelled";
 
 const statusLabels: Record<string, string> = {
-  pending: "Pendente", paid: "Pago", shipped: "Enviado", delivered: "Entregue", cancelled: "Cancelado",
+  pending: "Pendente", processing: "A processar", paid: "Pago", shipped: "Enviado", delivered: "Entregue", cancelled: "Cancelado",
 };
 const statusColors: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-800", paid: "bg-blue-100 text-blue-800",
-  shipped: "bg-purple-100 text-purple-800", delivered: "bg-green-100 text-green-800",
-  cancelled: "bg-red-100 text-red-800",
+  pending: "bg-yellow-100 text-yellow-800", processing: "bg-yellow-100 text-yellow-800",
+  paid: "bg-blue-100 text-blue-800", shipped: "bg-purple-100 text-purple-800",
+  delivered: "bg-green-100 text-green-800", cancelled: "bg-red-100 text-red-800",
 };
 const filterTabs: { key: "all" | OrderStatus; label: string }[] = [
   { key: "all", label: "Todos" },
@@ -27,6 +27,9 @@ const filterTabs: { key: "all" | OrderStatus; label: string }[] = [
   { key: "delivered", label: "Entregues" },
   { key: "cancelled", label: "Cancelados" },
 ];
+
+// "processing" conta como pendente nos filtros e no resumo
+const groupStatus = (s: string) => (s === "processing" ? "pending" : s);
 
 const fmt = (n: number) => Number(n || 0).toLocaleString("pt-MZ");
 const normalizePhone = (raw?: string) => {
@@ -39,7 +42,7 @@ const AdminOrders = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [trackingCode, setTrackingCode] = useState("");
-  const [filter, setFilter] = useState<"all" | OrderStatus>("pending");
+  const [filter, setFilter] = useState<"all" | OrderStatus>("paid");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -93,6 +96,16 @@ const AdminOrders = () => {
 
   useEffect(() => { fetchOrders(); }, []);
 
+  // Actualiza sozinho quando o Débito Pay confirma um pagamento (webhook)
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-orders-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => { fetchOrders(); })
+      .subscribe();
+    const interval = setInterval(fetchOrders, 30000);
+    return () => { supabase.removeChannel(channel); clearInterval(interval); };
+  }, []);
+
   const notifyCustomerWhatsApp = (order: any, accepted: boolean) => {
     const phoneNum = normalizePhone(order.shipping_address?.phone);
     if (!phoneNum) return;
@@ -128,17 +141,20 @@ const AdminOrders = () => {
     else { toast.success("Código de rastreio adicionado!"); setTrackingCode(""); fetchOrders(); }
   };
 
+  const isAuto = (order: any) => !!order.debitopay_payment_id;
+
   const getPaymentDetail = (order: any) => {
+    if (isAuto(order)) return "Débito Pay (automático)";
     const detail = order.shipping_address?.payment_detail;
     if (detail === "mpesa") return "M-Pesa";
     if (detail === "emola") return "e-Mola";
-    if (detail === "debitopay") return "Débito Pay (M-Pesa)";
+    if (detail === "debitopay") return "Débito Pay (automático)";
     if (detail === "bank") return "Transferência bancária";
     return order.payment_method || "—";
   };
 
   const stats = useMemo(() => {
-    const count = (s: OrderStatus) => orders.filter((o) => o.status === s).length;
+    const count = (s: string) => orders.filter((o) => groupStatus(o.status) === s).length;
     const sum = (list: any[]) => list.reduce((acc, o) => acc + Number(o.total_mzn || 0), 0);
     const today = new Date().toDateString();
     const paidLike = orders.filter((o) => ["paid", "shipped", "delivered"].includes(o.status));
@@ -152,14 +168,14 @@ const AdminOrders = () => {
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: orders.length };
-    orders.forEach((o) => { c[o.status] = (c[o.status] || 0) + 1; });
+    orders.forEach((o) => { const k = groupStatus(o.status); c[k] = (c[k] || 0) + 1; });
     return c;
   }, [orders]);
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     return orders.filter((o) => {
-      if (filter !== "all" && o.status !== filter) return false;
+      if (filter !== "all" && groupStatus(o.status) !== filter) return false;
       if (!q) return true;
       const hay = [
         o.id,
@@ -183,7 +199,7 @@ const AdminOrders = () => {
       {/* Resumo */}
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="rounded-xl border p-3 shadow-card">
-          <p className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" /> Por confirmar</p>
+          <p className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" /> A aguardar pagamento</p>
           <p className="text-xl font-bold">{stats.pending}</p>
         </div>
         <div className="rounded-xl border p-3 shadow-card">
@@ -234,6 +250,9 @@ const AdminOrders = () => {
           const customerName = addr.name || order.profile?.name || order.profile?.email || "Cliente";
           const phoneNum = normalizePhone(addr.phone || order.profile?.phone);
           const firstImage = order.items?.[0]?.products?.images?.[0];
+          const waiting = ["pending", "processing"].includes(order.status);
+          // Só pedidos antigos, com comprovante e sem Débito Pay, precisam de revisão manual
+          const legacyProof = waiting && !isAuto(order) && !!order.payment_proof_url;
 
           return (
             <div key={order.id} className="rounded-xl border p-4 shadow-card">
@@ -258,8 +277,8 @@ const AdminOrders = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[order.status]}`}>
-                    {statusLabels[order.status]}
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[order.status] || ""}`}>
+                    {statusLabels[order.status] || order.status}
                   </span>
                   <span className="font-bold text-primary">{fmt(order.total_mzn)} MZN</span>
                 </div>
@@ -268,6 +287,12 @@ const AdminOrders = () => {
               {order.tracking_code && (
                 <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
                   <Package className="h-3 w-3" /> Rastreio: <strong>{order.tracking_code}</strong>
+                </p>
+              )}
+
+              {waiting && !legacyProof && (
+                <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                  <Zap className="h-3 w-3" /> A aguardar pagamento — será confirmado automaticamente pelo Débito Pay.
                 </p>
               )}
 
@@ -326,7 +351,7 @@ const AdminOrders = () => {
                       <div className="flex justify-center">
                         <img src={order.payment_proof_url} alt="Comprovante" className="max-h-[60vh] rounded-lg object-contain" />
                       </div>
-                      {order.status === "pending" && (
+                      {legacyProof && (
                         <div className="flex gap-2 pt-2">
                           <Button className="flex-1" onClick={() => updateStatus(order.id, "paid")}>
                             <CheckCircle className="mr-1 h-4 w-4" /> Aceitar Pagamento
@@ -338,17 +363,6 @@ const AdminOrders = () => {
                       )}
                     </DialogContent>
                   </Dialog>
-                )}
-
-                {order.status === "pending" && !order.payment_proof_url && (
-                  <>
-                    <Button size="sm" onClick={() => updateStatus(order.id, "paid")}>
-                      <CheckCircle className="mr-1 h-4 w-4" /> Confirmar Pagamento
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={() => updateStatus(order.id, "cancelled")}>
-                      <XCircle className="mr-1 h-4 w-4" /> Cancelar
-                    </Button>
-                  </>
                 )}
 
                 {order.status === "paid" && (
