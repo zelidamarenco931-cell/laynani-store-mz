@@ -10,12 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Smartphone, ArrowLeft, Building2, Upload, ImageIcon, CreditCard, Zap } from "lucide-react";
+import { Smartphone, ArrowLeft, Upload, ImageIcon, Zap } from "lucide-react";
 
 const paymentMethods = [
   { id: "mpesa", label: "M-Pesa", icon: Smartphone, desc: "Envie para 852506942 (Felizarda I.M)" },
   { id: "emola", label: "e-Mola", icon: Smartphone, desc: "Envie para 868214712 (Zelida Isac Marenço)" },
-  { id: "bank", label: "Transferência BIM", icon: Building2, desc: "NIB: 000100000109942147557" },
   { id: "debitopay", label: "Débito Pay", icon: Zap, desc: "Pagamento automático seguro - Múltiplas opções" },
 ] as const;
 
@@ -149,7 +148,6 @@ const Checkout = () => {
       const paymentMethodMap: Record<string, string> = {
         mpesa: "mpesa",
         emola: "mpesa",
-        bank: "bank_transfer",
         debitopay: "debitopay",
       };
 
@@ -161,7 +159,7 @@ const Checkout = () => {
           user_id: user.id,
           total_mzn: grandTotal,
           status: payment === "debitopay" ? "processing" : "pending",
-          payment_method: paymentMethodMap[payment] as "mpesa" | "bank_transfer" | "debitopay",
+          payment_method: paymentMethodMap[payment] as "mpesa" | "debitopay",
           shipping_address: {
             province,
             city: formData.city,
@@ -201,7 +199,7 @@ const Checkout = () => {
         return;
       }
 
-      // Handle manual payment methods (M-Pesa, e-Mola, Bank Transfer)
+      // Handle manual payment methods (M-Pesa, e-Mola)
       const proofUrl = await uploadProof(order.id);
 
       if (proofUrl) {
@@ -469,23 +467,6 @@ const Checkout = () => {
                 </div>
               )}
 
-              {payment === "bank" && (
-                <div className="rounded-lg bg-muted p-3 sm:p-4 text-sm space-y-2 sm:space-y-3">
-                  <p className="font-medium">🏦 Transferência Bancária (BIM):</p>
-                  <div className="space-y-1 text-xs sm:text-sm text-muted-foreground">
-                    <p>
-                      NIB: <strong className="text-foreground break-all">000100000109942147557</strong>
-                    </p>
-                    <p>
-                      Valor: <strong className="text-foreground">{grandTotal.toLocaleString("pt-MZ")} MZN</strong>
-                    </p>
-                  </div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    Após a transferência, anexe o comprovante abaixo.
-                  </p>
-                </div>
-              )}
-
               {payment === "debitopay" && (
                 <div className="rounded-lg bg-muted p-3 sm:p-4 text-sm space-y-2 sm:space-y-3">
                   <p className="font-medium">⚡ Pagamento com Débito Pay (Automático):</p>
@@ -504,7 +485,7 @@ const Checkout = () => {
                 </div>
               )}
 
-              {["mpesa", "emola", "bank"].includes(payment) && (
+              {["mpesa", "emola"].includes(payment) && (
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2 text-xs sm:text-sm">
                     <Upload className="h-4 w-4" /> Comprovante de Pagamento *
