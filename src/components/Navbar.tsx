@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { ShoppingCart, Search, Menu, User, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import SearchBar from "@/components/SearchBar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
@@ -16,6 +16,7 @@ const Navbar = () => {
   const navLinks = [
     { label: "Início", href: "/" },
     { label: "Catálogo", href: "/catalogo" },
+    { label: "Campanhas", href: "/campanhas" },
     { label: "Afiliados", href: "/afiliados" },
   ];
 
@@ -51,12 +52,7 @@ const Navbar = () => {
           )}
         </nav>
         <div className="flex items-center gap-2">
-          <div className="hidden w-64 lg:block">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Pesquisar produtos..." className="pl-9 h-9" />
-            </div>
-          </div>
+          <SearchBar className="hidden w-64 lg:block" />
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSearchOpen(!searchOpen)}><Search className="h-5 w-5" /></Button>
           {isAdmin && (
             <Button variant="ghost" size="icon" asChild>
@@ -76,10 +72,7 @@ const Navbar = () => {
       </div>
       {searchOpen && (
         <div className="border-t p-3 lg:hidden">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Pesquisar produtos..." className="pl-9" autoFocus />
-          </div>
+          <SearchBar autoFocus onDone={() => setSearchOpen(false)} />
         </div>
       )}
     </header>

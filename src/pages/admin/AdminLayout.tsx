@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, ShoppingBag, Package, DollarSign, Settings, ArrowLeft, Menu, FolderOpen, Megaphone, Users, UserCheck, Download } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, Package, DollarSign, Settings, ArrowLeft, Menu, FolderOpen, Megaphone, Users, UserCheck, Download, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -11,6 +11,7 @@ const adminLinks = [
   { label: "Produtos", href: "/admin/produtos", icon: Package },
   { label: "Importar", href: "/admin/importar", icon: Download },
   { label: "Categorias", href: "/admin/categorias", icon: FolderOpen },
+  { label: "Campanhas", href: "/admin/campanhas", icon: Percent },
   { label: "Marketing", href: "/admin/marketing", icon: Megaphone },
   { label: "Afiliados", href: "/admin/afiliados", icon: Users },
   { label: "Clientes", href: "/admin/clientes", icon: UserCheck },

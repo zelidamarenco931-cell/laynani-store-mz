@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import ProductCard from "@/components/ProductCard";
 import { Sparkles } from "lucide-react";
+import { getPricing } from "@/lib/pricing";
 
 const SponsoredProducts = () => {
   const [products, setProducts] = useState<any[]>([]);
@@ -29,16 +30,21 @@ const SponsoredProducts = () => {
         <h2 className="text-2xl font-bold">Recomendados para Você</h2>
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        {products.map((p: any) => (
-          <ProductCard
-            key={p.id}
-            id={p.id}
-            name={p.name}
-            price={Number(p.price_mzn)}
-            image={p.images?.[0] || "/placeholder.svg"}
-            isSponsored
-          />
-        ))}
+        {products.map((p: any) => {
+          const pricing = getPricing(p);
+          return (
+            <ProductCard
+              key={p.id}
+              id={p.id}
+              name={p.name}
+              price={pricing.price}
+              originalPrice={pricing.originalPrice}
+              hasPromotion={pricing.hasPromotion}
+              image={p.images?.[0] || "/placeholder.svg"}
+              isSponsored
+            />
+          );
+        })}
       </div>
     </section>
   );

@@ -33,6 +33,10 @@ const AffiliateJoin = lazy(() => import("./pages/AffiliateJoin"));
 const AffiliateDashboard = lazy(() => import("./pages/AffiliateDashboard"));
 const OrderSuccess = lazy(() => import("./pages/OrderSuccess"));
 const AdminCustomers = lazy(() => import("./pages/admin/AdminCustomers"));
+const AdminCampaigns = lazy(() => import("./pages/admin/AdminCampaigns"));
+const ImportProduct = lazy(() => import("./pages/admin/ImportProduct"));
+const Campaigns = lazy(() => import("./pages/Campaigns"));
+const CampaignDetail = lazy(() => import("./pages/CampaignDetail"));
 
 const queryClient = new QueryClient();
 
@@ -56,6 +60,8 @@ const App = () => (
                 <Route path="/" element={<Index />} />
                 <Route path="/catalogo" element={<Catalog />} />
                 <Route path="/produto/:id" element={<ProductDetail />} />
+                <Route path="/campanhas" element={<Campaigns />} />
+                <Route path="/campanhas/:slug" element={<CampaignDetail />} />
                 <Route path="/carrinho" element={<Cart />} />
                 <Route path="/checkout" element={<Checkout />} />
                 <Route path="/login" element={<Login />} />
@@ -71,6 +77,8 @@ const App = () => (
                   <Route index element={<AdminDashboard />} />
                   <Route path="pedidos" element={<AdminOrders />} />
                   <Route path="produtos" element={<AdminProducts />} />
+                  <Route path="importar" element={<ImportProduct />} />
+                  <Route path="campanhas" element={<AdminCampaigns />} />
                   <Route path="categorias" element={<AdminCategories />} />
                   <Route path="marketing" element={<AdminMarketing />} />
                   <Route path="afiliados" element={<AdminAffiliates />} />
