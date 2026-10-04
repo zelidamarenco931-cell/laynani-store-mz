@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { CheckCircle, XCircle, Eye, Truck, Package, MessageCircle } from "lucide-react";
+import {
+  CheckCircle, XCircle, Eye, Truck, Package, MessageCircle, Search, RefreshCw,
+  ChevronDown, ChevronUp, MapPin, Clock, Wallet, ShoppingBag,
+} from "lucide-react";
+
+type OrderStatus = "pending" | "paid" | "shipped" | "delivered" | "cancelled";
 
 const statusLabels: Record<string, string> = {
   pending: "Pendente", paid: "Pago", shipped: "Enviado", delivered: "Entregue", cancelled: "Cancelado",
@@ -14,15 +19,32 @@ const statusColors: Record<string, string> = {
   shipped: "bg-purple-100 text-purple-800", delivered: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
 };
+const filterTabs: { key: "all" | OrderStatus; label: string }[] = [
+  { key: "all", label: "Todos" },
+  { key: "pending", label: "Pendentes" },
+  { key: "paid", label: "Pagos" },
+  { key: "shipped", label: "Enviados" },
+  { key: "delivered", label: "Entregues" },
+  { key: "cancelled", label: "Cancelados" },
+];
 
-type OrderStatus = "pending" | "paid" | "shipped" | "delivered" | "cancelled";
+const fmt = (n: number) => Number(n || 0).toLocaleString("pt-MZ");
+const normalizePhone = (raw?: string) => {
+  const phone = (raw || "").replace(/\D/g, "");
+  if (!phone) return "";
+  return phone.startsWith("258") ? phone : `258${phone}`;
+};
 
 const AdminOrders = () => {
   const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [trackingCode, setTrackingCode] = useState("");
+  const [filter, setFilter] = useState<"all" | OrderStatus>("pending");
+  const [search, setSearch] = useState("");
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const fetchOrders = async () => {
-    // Fetch orders first, then fetch profiles separately by user_id
+    setLoading(true);
     const { data: ordersData, error } = await supabase
       .from("orders")
       .select("*")
@@ -30,179 +52,335 @@ const AdminOrders = () => {
 
     if (error) {
       console.error("Error fetching orders:", error);
+      toast.error("Erro ao carregar pedidos.");
+      setLoading(false);
       return;
     }
     if (!ordersData || ordersData.length === 0) {
       setOrders([]);
+      setLoading(false);
       return;
     }
 
-    // Get unique user_ids
-    const userIds = [...new Set(ordersData.map(o => o.user_id))];
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, name, email, phone")
-      .in("user_id", userIds);
+    const userIds = [...new Set(ordersData.map((o) => o.user_id))];
+    const orderIds = ordersData.map((o) => o.id);
+
+    const [{ data: profiles }, { data: items }] = await Promise.all([
+      supabase.from("profiles").select("user_id, name, email, phone").in("user_id", userIds),
+      supabase
+        .from("order_items")
+        .select("order_id, quantity, price_mzn, product_id, products(name, images)")
+        .in("order_id", orderIds),
+    ]);
 
     const profileMap: Record<string, any> = {};
-    if (profiles) {
-      profiles.forEach(p => { profileMap[p.user_id] = p; });
-    }
+    (profiles || []).forEach((p) => { profileMap[p.user_id] = p; });
 
-    const enriched = ordersData.map(o => ({
-      ...o,
-      profile: profileMap[o.user_id] || null,
-    }));
+    const itemsMap: Record<string, any[]> = {};
+    ((items as any[]) || []).forEach((it) => {
+      (itemsMap[it.order_id] ||= []).push(it);
+    });
 
-    setOrders(enriched);
+    setOrders(
+      ordersData.map((o) => ({
+        ...o,
+        profile: profileMap[o.user_id] || null,
+        items: itemsMap[o.id] || [],
+      }))
+    );
+    setLoading(false);
   };
 
   useEffect(() => { fetchOrders(); }, []);
 
   const notifyCustomerWhatsApp = (order: any, accepted: boolean) => {
-    const phone = order.shipping_address?.phone?.replace(/\D/g, "") || "";
-    const phoneNum = phone.startsWith("258") ? phone : `258${phone}`;
+    const phoneNum = normalizePhone(order.shipping_address?.phone);
+    if (!phoneNum) return;
     const status = accepted ? "✅ *ACEITE*" : "❌ *REJEITADO*";
     const msg = encodeURIComponent(
       `${status}\n\n` +
       `Olá ${order.shipping_address?.name || "Cliente"},\n\n` +
       `O comprovante do seu pedido #${order.id.slice(0, 8).toUpperCase()} foi ${accepted ? "aceite" : "rejeitado"}.\n` +
-      `💰 Total: ${Number(order.total_mzn).toLocaleString("pt-MZ")} MZN\n\n` +
-      (accepted ? "O seu pedido será processado em breve. Obrigado!" : "Por favor, envie um novo comprovante ou entre em contacto connosco.")
+      `💰 Total: ${fmt(order.total_mzn)} MZN\n\n` +
+      (accepted
+        ? "O seu pedido será processado em breve. Obrigado!"
+        : "Por favor, envie um novo comprovante ou entre em contacto connosco.")
     );
     window.open(`https://wa.me/${phoneNum}?text=${msg}`, "_blank");
   };
 
   const updateStatus = async (orderId: string, status: OrderStatus) => {
     const { error } = await supabase.from("orders").update({ status }).eq("id", orderId);
-    if (error) toast.error("Erro ao actualizar.");
-    else {
-      toast.success(`Status: ${statusLabels[status]}`);
-      const order = orders.find(o => o.id === orderId);
-      if (order && (status === "paid" || status === "cancelled")) {
-        notifyCustomerWhatsApp(order, status === "paid");
-      }
-      fetchOrders();
-    }
+    if (error) { toast.error("Erro ao actualizar."); return; }
+    toast.success(`Estado: ${statusLabels[status]}`);
+    const order = orders.find((o) => o.id === orderId);
+    if (order && (status === "paid" || status === "cancelled")) notifyCustomerWhatsApp(order, status === "paid");
+    fetchOrders();
   };
 
   const addTracking = async (orderId: string) => {
     if (!trackingCode.trim()) return;
-    const { error } = await supabase.from("orders").update({ tracking_code: trackingCode, status: "shipped" as OrderStatus }).eq("id", orderId);
+    const { error } = await supabase
+      .from("orders")
+      .update({ tracking_code: trackingCode.trim(), status: "shipped" as OrderStatus })
+      .eq("id", orderId);
     if (error) toast.error("Erro.");
     else { toast.success("Código de rastreio adicionado!"); setTrackingCode(""); fetchOrders(); }
   };
 
   const getPaymentDetail = (order: any) => {
     const detail = order.shipping_address?.payment_detail;
-    if (detail === "mpesa") return "M-Pesa (852506942)";
-    if (detail === "emola") return "e-Mola (868214712)";
-    if (detail === "bank") return "Transferência BIM";
+    if (detail === "mpesa") return "M-Pesa";
+    if (detail === "emola") return "e-Mola";
+    if (detail === "debitopay") return "Débito Pay (M-Pesa)";
+    if (detail === "bank") return "Transferência bancária";
     return order.payment_method || "—";
   };
 
+  const stats = useMemo(() => {
+    const count = (s: OrderStatus) => orders.filter((o) => o.status === s).length;
+    const sum = (list: any[]) => list.reduce((acc, o) => acc + Number(o.total_mzn || 0), 0);
+    const today = new Date().toDateString();
+    const paidLike = orders.filter((o) => ["paid", "shipped", "delivered"].includes(o.status));
+    return {
+      pending: count("pending"),
+      toShip: count("paid"),
+      revenue: sum(paidLike),
+      today: orders.filter((o) => new Date(o.created_at).toDateString() === today).length,
+    };
+  }, [orders]);
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: orders.length };
+    orders.forEach((o) => { c[o.status] = (c[o.status] || 0) + 1; });
+    return c;
+  }, [orders]);
+
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return orders.filter((o) => {
+      if (filter !== "all" && o.status !== filter) return false;
+      if (!q) return true;
+      const hay = [
+        o.id,
+        o.profile?.name, o.profile?.email, o.profile?.phone,
+        o.shipping_address?.name, o.shipping_address?.phone,
+        o.tracking_code,
+      ].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }, [orders, filter, search]);
+
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold">Pedidos</h1>
-      <div className="space-y-3">
-        {orders.length === 0 && <p className="text-muted-foreground">Nenhum pedido.</p>}
-        {orders.map((order) => (
-          <div key={order.id} className="rounded-xl border p-4 shadow-card">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p className="font-medium">#{order.id.slice(0, 8)}</p>
-                <p className="text-xs text-muted-foreground">
-                  {order.profile?.name || order.profile?.email || "Cliente"} • {new Date(order.created_at).toLocaleDateString("pt-MZ")}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Pagamento: <strong>{getPaymentDetail(order)}</strong>
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[order.status]}`}>
-                  {statusLabels[order.status]}
-                </span>
-                <span className="font-bold text-primary">{Number(order.total_mzn).toLocaleString("pt-MZ")} MZN</span>
-              </div>
-            </div>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold">Pedidos</h1>
+        <Button size="sm" variant="outline" onClick={fetchOrders} disabled={loading}>
+          <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Actualizar
+        </Button>
+      </div>
 
-            {order.tracking_code && (
-              <p className="mt-2 text-xs text-muted-foreground flex items-center gap-1">
-                <Package className="h-3 w-3" /> Rastreio: <strong>{order.tracking_code}</strong>
-              </p>
-            )}
+      {/* Resumo */}
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="rounded-xl border p-3 shadow-card">
+          <p className="flex items-center gap-1 text-xs text-muted-foreground"><Clock className="h-3 w-3" /> Por confirmar</p>
+          <p className="text-xl font-bold">{stats.pending}</p>
+        </div>
+        <div className="rounded-xl border p-3 shadow-card">
+          <p className="flex items-center gap-1 text-xs text-muted-foreground"><Truck className="h-3 w-3" /> Por enviar</p>
+          <p className="text-xl font-bold">{stats.toShip}</p>
+        </div>
+        <div className="rounded-xl border p-3 shadow-card">
+          <p className="flex items-center gap-1 text-xs text-muted-foreground"><ShoppingBag className="h-3 w-3" /> Pedidos hoje</p>
+          <p className="text-xl font-bold">{stats.today}</p>
+        </div>
+        <div className="rounded-xl border p-3 shadow-card">
+          <p className="flex items-center gap-1 text-xs text-muted-foreground"><Wallet className="h-3 w-3" /> Vendas (pagos)</p>
+          <p className="text-xl font-bold text-primary">{fmt(stats.revenue)} MZN</p>
+        </div>
+      </div>
 
-            <div className="mt-3 flex flex-wrap gap-2">
-              {order.payment_proof_url && (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      <Eye className="mr-1 h-4 w-4" /> Ver Comprovante
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-lg">
-                    <DialogHeader><DialogTitle>Comprovante de Pagamento</DialogTitle></DialogHeader>
-                    <div className="flex justify-center">
-                      <img src={order.payment_proof_url} alt="Comprovante" className="max-h-[60vh] rounded-lg object-contain" />
-                    </div>
-                    {order.status === "pending" && (
-                      <div className="flex gap-2 pt-2">
-                        <Button className="flex-1" onClick={() => updateStatus(order.id, "paid")}>
-                          <CheckCircle className="mr-1 h-4 w-4" /> Aceitar Pagamento
-                        </Button>
-                        <Button variant="destructive" className="flex-1" onClick={() => updateStatus(order.id, "cancelled")}>
-                          <XCircle className="mr-1 h-4 w-4" /> Rejeitar
-                        </Button>
-                      </div>
-                    )}
-                  </DialogContent>
-                </Dialog>
-              )}
-
-              {order.status === "pending" && !order.payment_proof_url && (
-                <>
-                  <Button size="sm" onClick={() => updateStatus(order.id, "paid")}>
-                    <CheckCircle className="mr-1 h-4 w-4" /> Confirmar Pagamento
-                  </Button>
-                  <Button size="sm" variant="destructive" onClick={() => updateStatus(order.id, "cancelled")}>
-                    <XCircle className="mr-1 h-4 w-4" /> Cancelar
-                  </Button>
-                </>
-              )}
-
-              {order.status === "paid" && (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      <Truck className="mr-1 h-4 w-4" /> Enviar + Rastreio
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader><DialogTitle>Código de Rastreio</DialogTitle></DialogHeader>
-                    <Input value={trackingCode} onChange={(e) => setTrackingCode(e.target.value)} placeholder="Código de rastreio" />
-                    <Button onClick={() => addTracking(order.id)}>Salvar e Marcar Enviado</Button>
-                  </DialogContent>
-                </Dialog>
-              )}
-
-              {order.status === "shipped" && (
-                <Button size="sm" variant="outline" onClick={() => updateStatus(order.id, "delivered")}>
-                  <CheckCircle className="mr-1 h-4 w-4" /> Marcar Entregue
-                </Button>
-              )}
-
-              {order.shipping_address?.phone && (
-                <Button size="sm" variant="outline" onClick={() => {
-                  const phone = (order.shipping_address?.phone || "").replace(/\D/g, "");
-                  const phoneNum = phone.startsWith("258") ? phone : `258${phone}`;
-                  window.open(`https://wa.me/${phoneNum}`, "_blank");
-                }}>
-                  <MessageCircle className="mr-1 h-4 w-4" /> WhatsApp
-                </Button>
-              )}
-            </div>
-          </div>
+      {/* Pesquisa e filtros */}
+      <div className="relative mb-3">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Pesquisar por nº do pedido, cliente, telefone ou rastreio"
+          className="pl-9"
+        />
+      </div>
+      <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+        {filterTabs.map((t) => (
+          <button
+            key={t.key}
+            onClick={() => setFilter(t.key)}
+            className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition ${
+              filter === t.key ? "bg-primary text-primary-foreground border-primary" : "hover:bg-muted"
+            }`}
+          >
+            {t.label} ({counts[t.key] || 0})
+          </button>
         ))}
+      </div>
+
+      <div className="space-y-3">
+        {loading && orders.length === 0 && <p className="text-muted-foreground">A carregar…</p>}
+        {!loading && visible.length === 0 && <p className="text-muted-foreground">Nenhum pedido encontrado.</p>}
+
+        {visible.map((order) => {
+          const isOpen = expanded === order.id;
+          const addr = order.shipping_address || {};
+          const customerName = addr.name || order.profile?.name || order.profile?.email || "Cliente";
+          const phoneNum = normalizePhone(addr.phone || order.profile?.phone);
+          const firstImage = order.items?.[0]?.products?.images?.[0];
+
+          return (
+            <div key={order.id} className="rounded-xl border p-4 shadow-card">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="flex gap-3">
+                  {firstImage ? (
+                    <img src={firstImage} alt="" className="h-12 w-12 rounded-lg object-cover" />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted">
+                      <Package className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-medium">#{order.id.slice(0, 8).toUpperCase()}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {customerName} • {new Date(order.created_at).toLocaleString("pt-MZ", { dateStyle: "short", timeStyle: "short" })}
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Pagamento: <strong>{getPaymentDetail(order)}</strong>
+                      {order.items?.length > 0 && <> • {order.items.reduce((a: number, i: any) => a + i.quantity, 0)} artigo(s)</>}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[order.status]}`}>
+                    {statusLabels[order.status]}
+                  </span>
+                  <span className="font-bold text-primary">{fmt(order.total_mzn)} MZN</span>
+                </div>
+              </div>
+
+              {order.tracking_code && (
+                <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
+                  <Package className="h-3 w-3" /> Rastreio: <strong>{order.tracking_code}</strong>
+                </p>
+              )}
+
+              {/* Detalhes */}
+              <button
+                onClick={() => setExpanded(isOpen ? null : order.id)}
+                className="mt-2 flex items-center gap-1 text-xs font-medium text-primary"
+              >
+                {isOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                {isOpen ? "Ocultar detalhes" : "Ver detalhes"}
+              </button>
+
+              {isOpen && (
+                <div className="mt-3 space-y-3 rounded-lg bg-muted/40 p-3 text-sm">
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Produtos</p>
+                    {order.items.length === 0 && <p className="text-xs text-muted-foreground">Sem itens registados.</p>}
+                    {order.items.map((it: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between gap-2 py-1">
+                        <div className="flex min-w-0 items-center gap-2">
+                          {it.products?.images?.[0] && (
+                            <img src={it.products.images[0]} alt="" className="h-8 w-8 rounded object-cover" />
+                          )}
+                          <span className="truncate">{it.products?.name || "Produto removido"}</span>
+                        </div>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {it.quantity} × {fmt(it.price_mzn)} MZN
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <p className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase text-muted-foreground">
+                      <MapPin className="h-3 w-3" /> Entrega
+                    </p>
+                    <p>{addr.name || customerName}</p>
+                    {addr.phone && <p className="text-xs text-muted-foreground">{addr.phone}</p>}
+                    <p className="text-xs text-muted-foreground">
+                      {[addr.address, addr.city, addr.province].filter(Boolean).join(", ") || "Sem morada registada"}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Acções */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {order.payment_proof_url && (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline">
+                        <Eye className="mr-1 h-4 w-4" /> Ver Comprovante
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-lg">
+                      <DialogHeader><DialogTitle>Comprovante de Pagamento</DialogTitle></DialogHeader>
+                      <div className="flex justify-center">
+                        <img src={order.payment_proof_url} alt="Comprovante" className="max-h-[60vh] rounded-lg object-contain" />
+                      </div>
+                      {order.status === "pending" && (
+                        <div className="flex gap-2 pt-2">
+                          <Button className="flex-1" onClick={() => updateStatus(order.id, "paid")}>
+                            <CheckCircle className="mr-1 h-4 w-4" /> Aceitar Pagamento
+                          </Button>
+                          <Button variant="destructive" className="flex-1" onClick={() => updateStatus(order.id, "cancelled")}>
+                            <XCircle className="mr-1 h-4 w-4" /> Rejeitar
+                          </Button>
+                        </div>
+                      )}
+                    </DialogContent>
+                  </Dialog>
+                )}
+
+                {order.status === "pending" && !order.payment_proof_url && (
+                  <>
+                    <Button size="sm" onClick={() => updateStatus(order.id, "paid")}>
+                      <CheckCircle className="mr-1 h-4 w-4" /> Confirmar Pagamento
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => updateStatus(order.id, "cancelled")}>
+                      <XCircle className="mr-1 h-4 w-4" /> Cancelar
+                    </Button>
+                  </>
+                )}
+
+                {order.status === "paid" && (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline">
+                        <Truck className="mr-1 h-4 w-4" /> Enviar + Rastreio
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader><DialogTitle>Código de Rastreio</DialogTitle></DialogHeader>
+                      <Input value={trackingCode} onChange={(e) => setTrackingCode(e.target.value)} placeholder="Código de rastreio" />
+                      <Button onClick={() => addTracking(order.id)}>Guardar e Marcar Enviado</Button>
+                    </DialogContent>
+                  </Dialog>
+                )}
+
+                {order.status === "shipped" && (
+                  <Button size="sm" variant="outline" onClick={() => updateStatus(order.id, "delivered")}>
+                    <CheckCircle className="mr-1 h-4 w-4" /> Marcar Entregue
+                  </Button>
+                )}
+
+                {phoneNum && (
+                  <Button size="sm" variant="outline" onClick={() => window.open(`https://wa.me/${phoneNum}`, "_blank")}>
+                    <MessageCircle className="mr-1 h-4 w-4" /> WhatsApp
+                  </Button>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
