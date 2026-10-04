@@ -11,12 +11,11 @@ const features = [
 ];
 
 // Redes sociais: só aparecem as que tiverem link preenchido.
-// Cole aqui o endereço completo do perfil (ex: "https://www.instagram.com/laynanistore").
 const SOCIAL_LINKS = [
   { name: "WhatsApp", href: `https://wa.me/${WHATSAPP_NUMBER}`, icon: MessageCircle, hover: "hover:bg-green-500 hover:text-white hover:border-green-500" },
-  { name: "Instagram", href: "", icon: Instagram, hover: "hover:bg-pink-600 hover:text-white hover:border-pink-600" },
-  { name: "Facebook", href: "", icon: Facebook, hover: "hover:bg-blue-600 hover:text-white hover:border-blue-600" },
-  { name: "YouTube", href: "", icon: Youtube, hover: "hover:bg-red-600 hover:text-white hover:border-red-600" },
+  { name: "Instagram", href: "https://www.instagram.com/laynanistore", icon: Instagram, hover: "hover:bg-pink-600 hover:text-white hover:border-pink-600" },
+  { name: "Facebook", href: "https://www.facebook.com/share/1Qaicvpp22/", icon: Facebook, hover: "hover:bg-blue-600 hover:text-white hover:border-blue-600" },
+  { name: "YouTube", href: "https://www.youtube.com/@laynanistore", icon: Youtube, hover: "hover:bg-red-600 hover:text-white hover:border-red-600" },
 ].filter((s) => s.href);
 
 const linkCls = "text-sm text-muted-foreground transition-colors hover:text-primary";
@@ -100,7 +99,7 @@ const Footer = () => (
 
         <h4 className="mb-3 mt-6 text-sm font-semibold">Pagamentos aceites</h4>
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-          {["M-Pesa", "e-Mola", "Visa / Mastercard", "Transferência BIM"].map((p) => (
+          {["M-Pesa", "e-Mola", "Visa / Mastercard", "Débito Pay"].map((p) => (
             <span key={p} className="rounded-md border bg-background px-2 py-1">{p}</span>
           ))}
         </div>
