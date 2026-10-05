@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,8 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Search, Loader2, Package, ArrowLeft, Check, ExternalLink } from "lucide-react";
-import { useEffect } from "react";
+import { Search, Loader2, Package, ArrowLeft, Check, ExternalLink, Plus } from "lucide-react";
 
 const ImportProduct = () => {
   const navigate = useNavigate();
@@ -19,6 +18,8 @@ const ImportProduct = () => {
   const [categories, setCategories] = useState<any[]>([]);
   const [product, setProduct] = useState<any>(null);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [extraImages, setExtraImages] = useState<string[]>([]);
+  const [imageUrl, setImageUrl] = useState("");
   const [form, setForm] = useState({
     name: "",
     description: "",
@@ -37,66 +38,53 @@ const ImportProduct = () => {
     });
   }, []);
 
+  const manualMode = (message: string) => {
+    toast.info(message);
+    setProduct({ manual: true, images: [] });
+    setSelectedImages([]);
+  };
+
   const extractFromUrl = async () => {
-    if (!url.trim()) { toast.error("Cole um link do Pinduoduo!"); return; }
+    if (!url.trim()) { toast.error("Cole um link do produto!"); return; }
 
     setLoading(true);
     setProduct(null);
+    setExtraImages([]);
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{
-            role: "user",
-            content: `Analise este link de produto do Pinduoduo/Shein/AliExpress e extraia as informações do produto.
-URL: ${url}
-
-Responda APENAS em JSON válido com esta estrutura (sem markdown, sem texto extra):
-{
-  "name": "nome do produto em português",
-  "description": "descrição do produto em português (2-3 frases)",
-  "images": ["url1", "url2", "url3"],
-  "original_price": "preço original em yuan/dólar",
-  "colors": ["cor1", "cor2"],
-  "sizes": ["tamanho1", "tamanho2"],
-  "source": "pinduoduo ou aliexpress ou shein"
-}
-
-Se não conseguir extrair do link, tente buscar informações do produto baseado no título/ID que está na URL.`
-          }]
-        })
+      const { data, error } = await supabase.functions.invoke("import-product", {
+        body: { url: url.trim() },
       });
 
-      const data = await response.json();
-      const text = data.content?.[0]?.text || "";
-
-      let parsed;
-      try {
-        const clean = text.replace(/```json|```/g, "").trim();
-        parsed = JSON.parse(clean);
-      } catch {
-        // Se não conseguiu extrair, pedir ao usuário para preencher manualmente
-        toast.info("Não foi possível extrair automaticamente. Preencha os dados manualmente.");
-        setProduct({ manual: true });
+      if (error) {
+        // Tenta ler a mensagem de erro devolvida pela função
+        let message = "Não foi possível ler o link. Preencha os dados manualmente.";
+        try {
+          const body = await (error as any).context?.json?.();
+          if (body?.error) message = body.error;
+        } catch { /* mantém a mensagem padrão */ }
+        manualMode(message);
         setLoading(false);
         return;
       }
 
-      setProduct(parsed);
-      setSelectedImages(parsed.images?.slice(0, 5) || []);
+      if (!data?.found) {
+        manualMode(data?.note || "A loja não devolveu os dados. Preencha manualmente.");
+        setLoading(false);
+        return;
+      }
+
+      setProduct(data);
+      setSelectedImages((data.images || []).slice(0, 5));
       setForm(prev => ({
         ...prev,
-        name: parsed.name || "",
-        description: parsed.description || "",
+        name: data.name || "",
+        description: data.description || "",
       }));
-      toast.success("Produto extraído! Ajuste o preço e prazo.");
+      toast.success("Produto lido! Confira os dados e defina o preço em MZN.");
     } catch (err) {
-      toast.error("Erro ao processar. Preencha manualmente.");
-      setProduct({ manual: true });
+      console.error(err);
+      manualMode("Erro ao processar o link. Preencha manualmente.");
     }
 
     setLoading(false);
@@ -139,6 +127,16 @@ Se não conseguir extrair do link, tente buscar informações do produto baseado
     );
   };
 
+  const addImageByUrl = () => {
+    const link = imageUrl.trim();
+    if (!/^https?:\/\//i.test(link)) { toast.error("Cole o link de uma imagem (https://...)."); return; }
+    if (!extraImages.includes(link)) setExtraImages(prev => [...prev, link]);
+    setSelectedImages(prev => (prev.includes(link) ? prev : [...prev, link]));
+    setImageUrl("");
+  };
+
+  const allImages: string[] = [...(product?.images || []), ...extraImages];
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
@@ -148,7 +146,7 @@ Se não conseguir extrair do link, tente buscar informações do produto baseado
         </Button>
         <div>
           <h1 className="text-2xl font-bold">Importar Produto</h1>
-          <p className="text-sm text-muted-foreground">Cole um link do Pinduoduo, AliExpress ou Shein</p>
+          <p className="text-sm text-muted-foreground">Cole um link do Pinduoduo, AliExpress, Shein ou Temu</p>
         </div>
       </div>
 
@@ -157,7 +155,7 @@ Se não conseguir extrair do link, tente buscar informações do produto baseado
         <Label className="text-base font-medium">Link do Produto</Label>
         <div className="flex gap-2">
           <Input
-            placeholder="https://www.pinduoduo.com/goods.html?goods_id=..."
+            placeholder="https://www.aliexpress.com/item/..."
             value={url}
             onChange={e => setUrl(e.target.value)}
             onKeyDown={e => e.key === "Enter" && extractFromUrl()}
@@ -165,11 +163,11 @@ Se não conseguir extrair do link, tente buscar informações do produto baseado
           />
           <Button onClick={extractFromUrl} disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            {loading ? "A extrair..." : "Extrair"}
+            {loading ? "A ler..." : "Extrair"}
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Suporta links do Pinduoduo, AliExpress e Shein. Após extrair, ajuste o preço em MZN e o prazo de entrega.
+          Algumas lojas bloqueiam a leitura automática. Nesse caso o formulário abre vazio e pode preencher à mão e adicionar imagens por link.
         </p>
       </div>
 
@@ -177,14 +175,14 @@ Se não conseguir extrair do link, tente buscar informações do produto baseado
       {product && (
         <div className="space-y-5">
           {/* Images */}
-          {product.images?.length > 0 && (
-            <div className="rounded-xl border bg-card p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <Label className="text-base font-medium">Imagens ({selectedImages.length} selecionadas)</Label>
-                <span className="text-xs text-muted-foreground">Clique para selecionar/remover</span>
-              </div>
+          <div className="rounded-xl border bg-card p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-base font-medium">Imagens ({selectedImages.length} seleccionadas)</Label>
+              {allImages.length > 0 && <span className="text-xs text-muted-foreground">Clique para seleccionar/remover</span>}
+            </div>
+            {allImages.length > 0 && (
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                {product.images.map((img: string, i: number) => (
+                {allImages.map((img: string, i: number) => (
                   <button
                     key={i}
                     type="button"
@@ -193,7 +191,7 @@ Se não conseguir extrair do link, tente buscar informações do produto baseado
                       selectedImages.includes(img) ? "border-primary ring-2 ring-primary/20" : "border-transparent opacity-60 hover:opacity-100"
                     }`}
                   >
-                    <img src={img} alt="" className="h-full w-full object-cover" />
+                    <img src={img} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
                     {selectedImages.includes(img) && (
                       <div className="absolute right-1 top-1 rounded-full bg-primary p-0.5">
                         <Check className="h-2.5 w-2.5 text-white" />
@@ -202,24 +200,31 @@ Se não conseguir extrair do link, tente buscar informações do produto baseado
                   </button>
                 ))}
               </div>
+            )}
+            <div className="flex gap-2">
+              <Input
+                value={imageUrl}
+                onChange={e => setImageUrl(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && addImageByUrl()}
+                placeholder="Adicionar imagem por link (https://...)"
+              />
+              <Button type="button" variant="outline" onClick={addImageByUrl}>
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
-          )}
+          </div>
 
           {/* Info extraída */}
           {!product.manual && (
             <div className="rounded-xl border bg-muted/40 p-4 space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase">Info extraída da fonte</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase">Info lida da loja</p>
               <div className="flex flex-wrap gap-2">
                 {product.source && <Badge variant="outline">{product.source}</Badge>}
                 {product.original_price && <Badge variant="outline">Preço original: {product.original_price}</Badge>}
-                {product.colors?.map((c: string) => <Badge key={c} variant="secondary">{c}</Badge>)}
-                {product.sizes?.map((s: string) => <Badge key={s} variant="secondary">{s}</Badge>)}
               </div>
-              {product.source && (
-                <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
-                  <ExternalLink className="h-3 w-3" /> Ver produto original
-                </a>
-              )}
+              <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
+                <ExternalLink className="h-3 w-3" /> Ver produto original
+              </a>
             </div>
           )}
 
@@ -302,7 +307,7 @@ Se não conseguir extrair do link, tente buscar informações do produto baseado
       {!product && !loading && (
         <div className="rounded-xl border border-dashed p-12 text-center space-y-3">
           <Package className="h-12 w-12 mx-auto text-muted-foreground/40" />
-          <p className="text-muted-foreground">Cole um link acima para extrair o produto automaticamente</p>
+          <p className="text-muted-foreground">Cole um link acima para ler o produto automaticamente</p>
         </div>
       )}
     </div>
