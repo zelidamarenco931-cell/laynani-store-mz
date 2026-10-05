@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://Laynani Store-store.vercel.app/</loc>
-    <lastmod>2026-04-14</lastmod>
+    <loc>https://laynani-store.vercel.app/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://Laynani Store-store.vercel.app/catalog</loc>
-    <lastmod>2026-04-14</lastmod>
+    <loc>https://laynani-store.vercel.app/catalogo</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://Laynani Store-store.vercel.app/about</loc>
-    <lastmod>2026-04-14</lastmod>
+    <loc>https://laynani-store.vercel.app/campanhas</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://laynani-store.vercel.app/sobre</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://Laynani Store-store.vercel.app/contact</loc>
-    <lastmod>2026-04-14</lastmod>
+    <loc>https://laynani-store.vercel.app/contacto</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://Laynani Store-store.vercel.app/affiliates</loc>
-    <lastmod>2026-04-14</lastmod>
+    <loc>https://laynani-store.vercel.app/afiliados</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
