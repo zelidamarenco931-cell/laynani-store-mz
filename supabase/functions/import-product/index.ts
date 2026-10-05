@@ -9,9 +9,16 @@ const cors = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
 
-// Só aceita lojas conhecidas (evita que a função seja usada para aceder a outros sites).
+const UA =
+  "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36";
+
+// Páginas: só aceita lojas conhecidas (evita que a função seja usada para aceder a outros sites).
 const ALLOWED = ["pinduoduo.com", "yangkeduo.com", "aliexpress.com", "aliexpress.us", "shein.com", "shein.top", "temu.com"];
 const hostAllowed = (host: string) => ALLOWED.some((d) => host === d || host.endsWith("." + d));
+
+// Imagens: qualquer CDN público, mas nunca endereços internos.
+const isPrivateHost = (host: string) =>
+  host === "localhost" || /^[\d.]+$/.test(host) || host.includes(":") || host.endsWith(".local") || host.endsWith(".internal");
 
 const sourceOf = (host: string) =>
   host.includes("aliexpress") ? "aliexpress" : host.includes("shein") ? "shein" : host.includes("temu") ? "temu" : "pinduoduo";
@@ -57,8 +64,7 @@ async function fetchPage(startUrl: string) {
         redirect: "manual",
         signal: ctrl.signal,
         headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
+          "User-Agent": UA,
           "Accept": "text/html,application/xhtml+xml",
           "Accept-Language": "en-US,en;q=0.9,pt;q=0.8",
         },
@@ -112,7 +118,7 @@ function extract(html: string, finalUrl: string) {
   addImg(metaContent(html, "og:image"));
   addImg(metaContent(html, "twitter:image"));
 
-  // Listas de imagens embebidas no estado da página (AliExpress/Shein/Temu)
+  // Listas de imagens embebidas no estado da página (AliExpress/Shein/Temu/Pinduoduo)
   for (const m of html.matchAll(/"imagePathList"\s*:\s*\[([^\]]*)\]/g)) {
     for (const u of m[1].matchAll(/"([^"]+)"/g)) addImg(u[1]);
   }
@@ -127,6 +133,65 @@ function extract(html: string, finalUrl: string) {
     images: images.slice(0, 8),
     original_price: price ? `${price}${currency ? " " + currency : ""}` : "",
   };
+}
+
+// Traduz para português (detecta o idioma de origem automaticamente, ex.: chinês).
+async function translate(text: string): Promise<{ text: string; translated: boolean }> {
+  if (!text.trim()) return { text, translated: false };
+  try {
+    const res = await fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=pt&dt=t", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ q: text }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error(`translate ${res.status}`);
+    const data = await res.json();
+    const out = ((data?.[0] as any[]) || []).map((s) => s?.[0] ?? "").join("").trim();
+    const lang = String(data?.[2] || "");
+    return { text: out || text, translated: !!out && !lang.startsWith("pt") };
+  } catch (err) {
+    console.error("translate failed:", err);
+    return { text, translated: false };
+  }
+}
+
+// Descarrega a imagem e guarda-a no Storage da loja (as lojas chinesas bloqueiam imagens usadas noutros sites).
+async function storeImage(sb: any, src: string, referer: string, index: number, stamp: number): Promise<string | null> {
+  try {
+    let current = src.replace(/^http:\/\//i, "https://");
+    let res: Response | null = null;
+    for (let hop = 0; hop < 3; hop++) {
+      const u = new URL(current);
+      if (u.protocol !== "https:" || isPrivateHost(u.hostname.toLowerCase())) return null;
+      res = await fetch(current, {
+        redirect: "manual",
+        signal: AbortSignal.timeout(12000),
+        headers: { "User-Agent": UA, "Referer": referer, "Accept": "image/avif,image/webp,image/*,*/*;q=0.8" },
+      });
+      if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
+        current = new URL(res.headers.get("location")!, current).toString();
+        res = null;
+        continue;
+      }
+      break;
+    }
+    if (!res || !res.ok) return null;
+
+    const type = (res.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
+    if (!type.startsWith("image/")) return null;
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.length === 0 || bytes.length > 6 * 1024 * 1024) return null;
+
+    const ext = type.includes("png") ? "png" : type.includes("webp") ? "webp" : type.includes("gif") ? "gif" : type.includes("avif") ? "avif" : "jpg";
+    const path = `imported/${stamp}-${index}.${ext}`;
+    const { error } = await sb.storage.from("products").upload(path, bytes, { contentType: type, upsert: false });
+    if (error) throw error;
+    return sb.storage.from("products").getPublicUrl(path).data.publicUrl as string;
+  } catch (err) {
+    console.error("storeImage failed:", src, err);
+    return null;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -151,13 +216,36 @@ Deno.serve(async (req) => {
     const data = extract(html, finalUrl);
     const found = !!(data.name || data.images.length);
 
+    if (!found) {
+      return json({
+        ...data,
+        source: sourceOf(host),
+        found: false,
+        note: `A loja não devolveu os dados do produto (código ${status}). Preencha manualmente.`,
+      });
+    }
+
+    // Tradução imediata + importação das fotos para o Storage da loja
+    const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const stamp = Date.now();
+    const [nameT, descT, stored] = await Promise.all([
+      translate(data.name),
+      translate(data.description),
+      Promise.all(data.images.slice(0, 6).map((src, i) => storeImage(admin, src, finalUrl, i, stamp))),
+    ]);
+    const savedImages = stored.filter((u): u is string => !!u);
+
     return json({
-      ...data,
+      name: nameT.text,
+      description: descT.text,
+      original_name: data.name,
+      translated: nameT.translated || descT.translated,
+      images: savedImages.length > 0 ? savedImages : data.images,
+      images_saved: savedImages.length,
+      images_found: data.images.length,
+      original_price: data.original_price,
       source: sourceOf(host),
-      found,
-      note: found
-        ? undefined
-        : `A loja não devolveu os dados do produto (código ${status}). Preencha manualmente.`,
+      found: true,
     });
   } catch (err: any) {
     console.error("import-product error:", err);
