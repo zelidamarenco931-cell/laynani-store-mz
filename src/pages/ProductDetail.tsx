@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from "sonner";
+import { trackPixel } from "@/lib/metaPixel";
 
 const PREDEFINED_COLORS: Record<string, string> = {
   "Preto": "#000000", "Branco": "#FFFFFF", "Vermelho": "#EF4444",
@@ -90,6 +91,19 @@ const ProductDetail = () => {
   const finalPrice = isPromoActive ? Number(product.promotional_price_mzn) : Number(product?.price_mzn || 0);
   const discountPercent = isPromoActive ? Math.round((1 - Number(product.promotional_price_mzn) / Number(product.price_mzn)) * 100) : 0;
 
+  // Meta Pixel: produto visto (usado para remarketing e optimização dos anúncios)
+  useEffect(() => {
+    if (!product?.id) return;
+    trackPixel("ViewContent", {
+      content_ids: [product.id],
+      content_name: product.name,
+      content_type: "product",
+      value: finalPrice,
+      currency: "MZN",
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
+
   const avgRating = reviews.length > 0 ? reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length : 0;
 
   const promoTimeLeft = useMemo(() => {
@@ -109,6 +123,13 @@ const ProductDetail = () => {
     for (let i = 0; i < qty; i++) {
       addItem({ id: product.id, name: product.name, price: finalPrice, image: images[0] });
     }
+    trackPixel("AddToCart", {
+      content_ids: [product.id],
+      content_name: product.name,
+      content_type: "product",
+      value: finalPrice * qty,
+      currency: "MZN",
+    });
     toast.success(`${qty}x ${product.name} adicionado!`);
   };
 
