@@ -1,5 +1,16 @@
 {
   "rewrites": [
+    {
+      "source": "/produto/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(facebookexternalhit|Facebot|Instagram|WhatsApp|Twitterbot|LinkedInBot).*"
+        }
+      ],
+      "destination": "/api/product-og?id=:id"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

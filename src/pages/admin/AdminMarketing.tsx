@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Plus, Copy, TrendingUp, DollarSign, Target, Pause, Play, Trash2 } from "lucide-react";
+import { Plus, Copy, TrendingUp, DollarSign, Target, Pause, Play, Trash2, Megaphone } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import AdCreative from "@/components/admin/AdCreative";
 
 const PLATFORMS = [
   { value: "facebook", label: "Facebook", color: "bg-blue-500" },
@@ -48,6 +49,7 @@ const AdminMarketing = () => {
   const [featured, setFeatured] = useState<FeaturedProduct[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [adCampaign, setAdCampaign] = useState<Campaign | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Form state
@@ -304,6 +306,11 @@ const AdminMarketing = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
+                        {(c.platform === "facebook" || c.platform === "instagram") && (
+                          <Button size="icon" variant="ghost" onClick={() => setAdCampaign(c)} title="Criar anúncio">
+                            <Megaphone className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button size="icon" variant="ghost" onClick={() => toggleCampaignStatus(c.id, c.status)} title={c.status === "active" ? "Pausar" : "Ativar"}>
                           {c.status === "active" ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                         </Button>
@@ -363,6 +370,8 @@ const AdminMarketing = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      <AdCreative campaign={adCampaign} onOpenChange={(o) => { if (!o) setAdCampaign(null); }} />
     </div>
   );
 };

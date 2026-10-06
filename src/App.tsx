@@ -8,6 +8,7 @@ import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import SessionManager from "./components/SessionManager";
+import MetaPixelTracker from "./components/MetaPixelTracker";
 import NotFound from "./pages/NotFound";
 
 const Catalog = lazy(() => import("./pages/Catalog"));
@@ -55,6 +56,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <SessionManager />
+            <MetaPixelTracker />
             <Suspense fallback={<Loading />}>
               <Routes>
                 <Route path="/" element={<Index />} />
