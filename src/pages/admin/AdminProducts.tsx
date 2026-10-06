@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +14,9 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import {
   Plus, Pencil, Trash2, Upload, X, ImageIcon, Package, Ruler, Palette, Weight, Hash, Search, Calendar,
-  Percent, Globe, Copy, ChevronRight, Check, Star, ExternalLink, AlertTriangle, CheckCircle, XCircle,
+  Percent, Globe, Copy, ChevronRight, Check, Star, ExternalLink, AlertTriangle, CheckCircle, XCircle, Sparkles, Loader2,
 } from "lucide-react";
+import { analyzeProductImage } from "@/lib/aiProduct";
 
 const PREDEFINED_COLORS = [
   { name: "Preto", hex: "#000000" }, { name: "Branco", hex: "#FFFFFF" },
@@ -33,7 +34,9 @@ const SIZE_OPTIONS: Record<string, string[]> = {
   acessorios: ["Único", "P", "M", "G"],
 };
 
-const STEPS = ["Informações", "Preço", "Variantes", "Imagens", "Entrega & SEO"];
+// A foto vem primeiro: ao adicioná-la, a IA lê a imagem e preenche o nome.
+const STEPS = ["Fotos", "Informações", "Preço", "Variantes", "Entrega & SEO"];
+const STEP_IDS = [3, 0, 1, 2, 4]; // posição -> conteúdo (0 info, 1 preço, 2 variantes, 3 fotos, 4 entrega)
 const LOW_STOCK = 5;
 const MAX_IMAGES = 10;
 
@@ -70,6 +73,8 @@ const AdminProducts = () => {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiFilled, setAiFilled] = useState(false);
   const [selectedColors, setSelectedColors] = useState<{ name: string; hex: string }[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [sizeCategory, setSizeCategory] = useState("roupas");
@@ -103,6 +108,8 @@ const AdminProducts = () => {
     setExistingImages([]);
     setSelectedColors([]);
     setSelectedSizes([]);
+    setAiFilled(false);
+    setAiLoading(false);
     setStep(0);
   };
 
@@ -135,7 +142,8 @@ const AdminProducts = () => {
     setSelectedSizes(sizes);
     setExistingImages(imgs);
     setMediaFiles([]);
-    setStep(0);
+    setAiFilled(false);
+    setStep(1); // ao editar, abre directamente em "Informações"
     snapshot.current = JSON.stringify([f, colors, sizes, imgs, []]);
     setDialogOpen(true);
   };
@@ -147,12 +155,51 @@ const AdminProducts = () => {
     resetForm();
   };
 
+  // IA: lê a foto e sugere nome, descrição, categoria e tags
+  const runAi = async (file: Blob, force = false) => {
+    setAiLoading(true);
+    try {
+      const s = await analyzeProductImage(file, categories.map((c) => c.name));
+      if (!s.name) {
+        toast.error("Não consegui identificar o produto nesta foto. Escreva o nome manualmente.");
+        return;
+      }
+      const catId = categories.find((c) => c.name === s.category)?.id || "";
+      setForm((prev) => ({
+        ...prev,
+        name: force || !prev.name.trim() ? s.name : prev.name,
+        description: prev.description.trim() ? prev.description : s.description,
+        category_id: prev.category_id || catId,
+        tags: prev.tags.trim() ? prev.tags : s.tags.join(", "),
+      }));
+      setAiFilled(true);
+      toast.success(`Nome sugerido: ${s.name}`);
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível analisar a foto. Escreva o nome manualmente.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const regenerateFromPhoto = async () => {
+    let file: Blob | null = mediaFiles[0] ?? null;
+    if (!file && existingImages[0]) {
+      file = await fetch(existingImages[0]).then((r) => r.blob()).catch(() => null);
+    }
+    if (!file) { toast.error("Adicione uma foto primeiro."); return; }
+    runAi(file, true);
+  };
+
   const addFiles = (files: File[]) => {
     const room = MAX_IMAGES - existingImages.length - mediaFiles.length;
     const images = files.filter((f) => /^image\/(jpeg|png|webp)$/.test(f.type));
     const valid = images.slice(0, Math.max(room, 0)).filter((f) => f.size <= 5 * 1024 * 1024);
     if (valid.length < files.length) toast.error("Aceites: JPG, PNG ou WebP, até 5MB cada, máximo 10 imagens.");
-    if (valid.length) setMediaFiles((prev) => [...prev, ...valid]);
+    if (valid.length) {
+      // Primeira foto de um produto sem nome: a IA lê a imagem e cria o nome automaticamente
+      if (!form.name.trim() && existingImages.length + mediaFiles.length === 0) runAi(valid[0]);
+      setMediaFiles((prev) => [...prev, ...valid]);
+    }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -182,23 +229,26 @@ const AdminProducts = () => {
   const promoValid = form.has_promotion && promo > 0 && promo < price;
   const discountPercent = promoValid ? Math.round((1 - promo / price) * 100) : 0;
 
-  const stepValid = [
+  // validade por conteúdo (0 nome, 1 preço, ...)
+  const contentValid = [
     form.name.trim().length > 0,
     price > 0 && (!form.has_promotion || !form.promotional_price_mzn || promoValid),
     true, true, true,
   ];
+  const stepOk = (i: number) => contentValid[STEP_IDS[i]];
 
   const goNext = () => {
-    if (!stepValid[step]) {
-      toast.error(step === 0 ? "Indique o nome do produto." : "Verifique o preço (e o preço promocional, que deve ser menor).");
+    if (aiLoading) { toast.message("A ler a foto... só um momento."); return; }
+    if (!stepOk(step)) {
+      toast.error(STEP_IDS[step] === 0 ? "Indique o nome do produto." : "Verifique o preço (e o preço promocional, que deve ser menor).");
       return;
     }
     setStep(step + 1);
   };
 
   const handleSave = async () => {
-    if (!stepValid[0]) { toast.error("Nome é obrigatório."); setStep(0); return; }
-    if (!stepValid[1]) { toast.error("Verifique o preço."); setStep(1); return; }
+    if (!contentValid[0]) { toast.error("Nome é obrigatório."); setStep(STEP_IDS.indexOf(0)); return; }
+    if (!contentValid[1]) { toast.error("Verifique o preço."); setStep(STEP_IDS.indexOf(1)); return; }
     setUploading(true);
 
     const payload: any = {
@@ -297,12 +347,23 @@ const AdminProducts = () => {
   const categoryName = categories.find((c) => c.id === form.category_id)?.name;
 
   const renderStep = () => {
-    switch (step) {
+    switch (STEP_IDS[step]) {
       case 0: return (
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Nome do Produto *</Label>
-            <Input value={form.name} maxLength={120} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex: Camiseta Casual Premium" />
+            <div className="flex items-center justify-between gap-2">
+              <Label>Nome do Produto *</Label>
+              {totalMediaCount > 0 && (
+                <button type="button" onClick={regenerateFromPhoto} disabled={aiLoading}
+                  className="flex items-center gap-1 text-xs font-medium text-primary hover:underline disabled:opacity-50">
+                  {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  Gerar da foto
+                </button>
+              )}
+            </div>
+            <Input value={form.name} maxLength={120} onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder={aiLoading ? "A ler a foto..." : "Ex: Camiseta Casual Premium"} />
+            {aiFilled && !aiLoading && <p className="flex items-center gap-1 text-xs text-primary"><Sparkles className="h-3 w-3" /> Sugerido pela IA a partir da foto. Confira e ajuste se quiser.</p>}
           </div>
           <div className="space-y-1.5">
             <div className="flex justify-between"><Label>Descrição</Label><span className="text-xs text-muted-foreground">{form.description.length} caracteres</span></div>
@@ -436,7 +497,7 @@ const AdminProducts = () => {
             <Badge variant="secondary">{totalMediaCount}/{MAX_IMAGES}</Badge>
           </div>
           <p className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
-            Ideal: quadradas, 1080×1080px · JPG, PNG ou WebP · até 5MB cada. A primeira imagem é a capa do produto.
+            Adicione a foto e a IA da Laynani Store lê a imagem e cria o nome do produto automaticamente. A primeira imagem é a capa. JPG, PNG ou WebP, até 5MB cada.
           </p>
           <input ref={fileRef} type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={handleFileSelect} className="hidden" />
           <div
@@ -449,6 +510,19 @@ const AdminProducts = () => {
             <Upload className="h-10 w-10 text-muted-foreground/60" />
             <p className="text-center text-sm font-medium text-muted-foreground">Arraste as imagens ou toque para escolher</p>
           </div>
+
+          {(aiLoading || aiFilled || form.name) && totalMediaCount > 0 && (
+            <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3">
+              {aiLoading ? <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" /> : <Sparkles className="h-5 w-5 shrink-0 text-primary" />}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-muted-foreground">{aiLoading ? "A ler a foto..." : aiFilled ? "Nome criado pela IA" : "Nome do produto"}</p>
+                {!aiLoading && <p className="truncate text-sm font-semibold">{form.name || "—"}</p>}
+              </div>
+              {!aiLoading && (
+                <Button type="button" size="sm" variant="outline" onClick={regenerateFromPhoto}>Gerar outro</Button>
+              )}
+            </div>
+          )}
 
           {totalMediaCount > 0 && (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
@@ -661,8 +735,8 @@ const AdminProducts = () => {
             <div className="flex items-center justify-between px-1 sm:hidden">
               {STEPS.map((s, i) => (
                 <button key={s} type="button" onClick={() => setStep(i)}
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors ${i === step ? "bg-primary text-primary-foreground" : stepValid[i] && i < step ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
-                  {i < step && stepValid[i] ? <Check className="h-4 w-4" /> : i + 1}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors ${i === step ? "bg-primary text-primary-foreground" : stepOk(i) && i < step ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
+                  {i < step && stepOk(i) ? <Check className="h-4 w-4" /> : i + 1}
                 </button>
               ))}
             </div>
@@ -671,7 +745,7 @@ const AdminProducts = () => {
               {STEPS.map((s, i) => (
                 <button key={s} type="button" onClick={() => setStep(i)}
                   className={`flex items-center gap-1 transition-colors ${i === step ? "font-semibold text-primary" : i < step ? "text-foreground" : ""}`}>
-                  {i < step && stepValid[i] ? <Check className="h-3 w-3 text-primary" /> : `${i + 1}.`} {s}
+                  {i < step && stepOk(i) ? <Check className="h-3 w-3 text-primary" /> : `${i + 1}.`} {s}
                 </button>
               ))}
             </div>
@@ -687,7 +761,7 @@ const AdminProducts = () => {
             {step < STEPS.length - 1 ? (
               <Button onClick={goNext}>Próximo <ChevronRight className="ml-1 h-4 w-4" /></Button>
             ) : (
-              <Button onClick={handleSave} disabled={uploading}>{uploading ? "A guardar..." : editing ? "Guardar alterações" : "Criar Produto"}</Button>
+              <Button onClick={handleSave} disabled={uploading || aiLoading}>{uploading ? "A guardar..." : editing ? "Guardar alterações" : "Criar Produto"}</Button>
             )}
           </div>
         </DialogContent>
