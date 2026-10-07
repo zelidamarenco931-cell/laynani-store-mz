@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   CheckCircle, XCircle, Eye, Truck, Package, MessageCircle, Search, RefreshCw,
-  ChevronDown, ChevronUp, MapPin, Clock, Wallet, ShoppingBag, Zap,
+  ChevronDown, ChevronUp, MapPin, Clock, Wallet, ShoppingBag, Zap, Download, AlertTriangle,
 } from "lucide-react";
 
 type OrderStatus = "pending" | "paid" | "shipped" | "delivered" | "cancelled";
@@ -31,6 +32,32 @@ const filterTabs: { key: "all" | OrderStatus; label: string }[] = [
 // "processing" conta como pendente nos filtros e no resumo
 const groupStatus = (s: string) => (s === "processing" ? "pending" : s);
 
+const paymentFilters = [
+  { key: "all", label: "Todos os pagamentos" },
+  { key: "mpesa_auto", label: "M-Pesa automático" },
+  { key: "debitopay", label: "Cartão Visa / Mastercard" },
+  { key: "emola", label: "e-Mola" },
+  { key: "other", label: "Outros" },
+];
+const periodFilters = [
+  { key: "all", label: "Todo o período" },
+  { key: "today", label: "Hoje" },
+  { key: "7d", label: "Últimos 7 dias" },
+  { key: "30d", label: "Últimos 30 dias" },
+];
+// Pedidos "A processar" há mais tempo do que isto, sem pagamento confirmado, consideram-se abandonados
+const STALE_MINUTES = 60;
+
+const paymentKey = (o: any) => {
+  const detail = o.shipping_address?.payment_detail;
+  if (detail === "mpesa_auto" || detail === "emola" || detail === "debitopay") return detail;
+  if (o.payment_method === "debitopay") return "debitopay";
+  if (o.payment_method === "emola") return "emola";
+  return "other";
+};
+const minutesSince = (iso: string) => Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
+const csvCell = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+
 const fmt = (n: number) => Number(n || 0).toLocaleString("pt-MZ");
 const normalizePhone = (raw?: string) => {
   const phone = (raw || "").replace(/\D/g, "");
@@ -44,6 +71,8 @@ const AdminOrders = () => {
   const [trackingCode, setTrackingCode] = useState("");
   const [filter, setFilter] = useState<"all" | OrderStatus>("paid");
   const [search, setSearch] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [periodFilter, setPeriodFilter] = useState("all");
   const [expanded, setExpanded] = useState<string | null>(null);
 
   const fetchOrders = async () => {
@@ -174,8 +203,17 @@ const AdminOrders = () => {
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const now = Date.now();
+    const startToday = new Date(); startToday.setHours(0, 0, 0, 0);
+    const cutoff =
+      periodFilter === "today" ? startToday.getTime()
+      : periodFilter === "7d" ? now - 7 * 86_400_000
+      : periodFilter === "30d" ? now - 30 * 86_400_000
+      : 0;
     return orders.filter((o) => {
       if (filter !== "all" && groupStatus(o.status) !== filter) return false;
+      if (paymentFilter !== "all" && paymentKey(o) !== paymentFilter) return false;
+      if (cutoff && new Date(o.created_at).getTime() < cutoff) return false;
       if (!q) return true;
       const hay = [
         o.id,
@@ -185,16 +223,77 @@ const AdminOrders = () => {
       ].filter(Boolean).join(" ").toLowerCase();
       return hay.includes(q);
     });
-  }, [orders, filter, search]);
+  }, [orders, filter, search, paymentFilter, periodFilter]);
+
+  const staleOrders = useMemo(
+    () => orders.filter((o) => o.status === "processing" && minutesSince(o.created_at) >= STALE_MINUTES),
+    [orders],
+  );
+
+  const cancelStale = async () => {
+    if (staleOrders.length === 0) return;
+    if (!window.confirm(`Cancelar ${staleOrders.length} pedido(s) "A processar" sem pagamento confirmado há mais de ${STALE_MINUTES} minutos?`)) return;
+    const ids = staleOrders.map((o) => o.id);
+    const { error } = await supabase.from("orders").update({ status: "cancelled" } as any).in("id", ids).eq("status", "processing" as any);
+    if (error) { toast.error("Erro ao cancelar pedidos."); return; }
+    toast.success(`${ids.length} pedido(s) cancelado(s).`);
+    fetchOrders();
+  };
+
+  const exportCsv = () => {
+    if (visible.length === 0) { toast.error("Não há pedidos para exportar."); return; }
+    const header = ["Pedido", "Data", "Cliente", "Telefone", "Província", "Cidade", "Pagamento", "Estado", "Total (MZN)", "Rastreio"];
+    const rows = visible.map((o) => {
+      const a = o.shipping_address || {};
+      return [
+        `#${String(o.id).slice(0, 8).toUpperCase()}`,
+        new Date(o.created_at).toLocaleString("pt-MZ"),
+        a.name || o.profile?.name || o.profile?.email || "Cliente",
+        a.phone || o.profile?.phone || "",
+        a.province || "", a.city || "",
+        getPaymentDetail(o), statusLabels[o.status] || o.status,
+        Number(o.total_mzn || 0), o.tracking_code || "",
+      ];
+    });
+    const csv = "﻿" + [header, ...rows].map((r) => r.map(csvCell).join(";")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pedidos-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">Pedidos</h1>
-        <Button size="sm" variant="outline" onClick={fetchOrders} disabled={loading}>
-          <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Actualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={exportCsv}>
+            <Download className="mr-1 h-4 w-4" /> CSV
+          </Button>
+          <Button size="sm" variant="outline" onClick={fetchOrders} disabled={loading}>
+            <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Actualizar
+          </Button>
+        </div>
       </div>
+
+      {/* Pedidos abandonados */}
+      {staleOrders.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-orange-300 bg-orange-50 p-3 text-sm dark:border-orange-900 dark:bg-orange-950/30">
+          <p className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-600" />
+            <span>
+              {staleOrders.length} {staleOrders.length === 1 ? "pedido está" : "pedidos estão"} "A processar" há mais de {STALE_MINUTES} minutos sem pagamento confirmado.
+            </span>
+          </p>
+          <Button size="sm" variant="outline" onClick={cancelStale}>
+            Cancelar {staleOrders.length === 1 ? "este" : "todos"}
+          </Button>
+        </div>
+      )}
 
       {/* Resumo */}
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -238,6 +337,16 @@ const AdminOrders = () => {
             {t.label} ({counts[t.key] || 0})
           </button>
         ))}
+      </div>
+      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>{paymentFilters.map((f) => <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>)}</SelectContent>
+        </Select>
+        <Select value={periodFilter} onValueChange={setPeriodFilter}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>{periodFilters.map((f) => <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>)}</SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-3">
