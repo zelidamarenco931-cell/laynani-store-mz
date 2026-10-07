@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 const SESSION_KEY = "laynani_last_path";
 
 // Páginas que NÃO devem ser restauradas (login, registo, etc.)
-const EXCLUDE_PATHS = ["/login", "/registrar", "/confirmar", "/admin"];
+const EXCLUDE_PATHS = ["/login", "/registrar", "/confirmar", "/esqueci-senha", "/redefinir-senha", "/admin"];
 
 export const useSessionSave = () => {
   const location = useLocation();
