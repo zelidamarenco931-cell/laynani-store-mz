@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import ProductCard from "@/components/ProductCard";
 import {
-  Star, ShoppingCart, Truck, ArrowLeft, Minus, Plus, Heart, Share2,
+  Star, ShoppingCart, Plane, Ship, ArrowLeft, Minus, Plus, Heart, Share2,
   Zap, Clock, Check, Package,
 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
@@ -275,11 +275,19 @@ const ProductDetail = () => {
             )}
 
             {/* Delivery */}
-            <div className="flex items-center gap-2 rounded-lg bg-muted p-3">
-              <Truck className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium">
-                Entrega em {product.delivery_time_min || 7} a {product.delivery_time_max || 20} dias úteis
-              </span>
+            <div className="space-y-2 rounded-lg bg-muted p-3">
+              <div className="flex items-center gap-2">
+                <Plane className="h-5 w-5 text-primary" />
+                <span className="text-sm font-medium">
+                  Entrega aérea: 7 a 12 ou 15 dias
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Ship className="h-5 w-5 text-primary" />
+                <span className="text-sm font-medium">
+                  Entrega marítima: 30 a 45 dias
+                </span>
+              </div>
             </div>
 
             {/* Stock */}
