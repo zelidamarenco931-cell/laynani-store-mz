@@ -4,7 +4,7 @@ import { Truck, ShieldCheck, CreditCard, Headphones, MessageCircle, Instagram, F
 const WHATSAPP_NUMBER = "258868214712";
 
 const features = [
-  { icon: Truck, label: "Entrega Rápida", desc: "3-7 dias úteis" },
+  { icon: Truck, label: "Entrega Rápida", desc: "Aéreo 7-12 dias · Marítimo 30-45 dias" },
   { icon: ShieldCheck, label: "Compra Segura", desc: "Dados protegidos" },
   { icon: CreditCard, label: "Pagamento Fácil", desc: "M-Pesa, e-Mola, Cartão" },
   { icon: Headphones, label: "Suporte 24/7", desc: "Sempre disponível" },

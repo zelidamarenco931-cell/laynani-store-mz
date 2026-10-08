@@ -278,7 +278,7 @@ const ProductDetail = () => {
             <div className="flex items-center gap-2 rounded-lg bg-muted p-3">
               <Truck className="h-5 w-5 text-primary" />
               <span className="text-sm font-medium">
-                Entrega em {product.delivery_time_min || 7} a {product.delivery_time_max || 20} dias úteis
+                Entrega: aéreo 7 a 12 dias · marítimo 30 a 45 dias
               </span>
             </div>
 
