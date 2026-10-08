@@ -279,7 +279,7 @@ const ProductDetail = () => {
               <div className="flex items-center gap-2">
                 <Plane className="h-5 w-5 text-primary" />
                 <span className="text-sm font-medium">
-                  Entrega aérea: 7 a 12 ou 15 dias
+                  Entrega aérea: 7 a 15 dias
                 </span>
               </div>
               <div className="flex items-center gap-2">
