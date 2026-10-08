@@ -3,10 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   CheckCircle, XCircle, Eye, Truck, Package, MessageCircle, Search, RefreshCw,
-  ChevronDown, ChevronUp, MapPin, Clock, Wallet, ShoppingBag, Zap,
+  ChevronDown, ChevronUp, MapPin, Clock, Wallet, ShoppingBag, Zap, Download, AlertTriangle,
 } from "lucide-react";
 
 type OrderStatus = "pending" | "paid" | "shipped" | "delivered" | "cancelled";
@@ -38,6 +39,48 @@ const normalizePhone = (raw?: string) => {
   return phone.startsWith("258") ? phone : `258${phone}`;
 };
 
+const PAYMENT_FILTERS = [
+  { value: "all", label: "Todos os pagamentos" },
+  { value: "mpesa_auto", label: "M-Pesa (automático)" },
+  { value: "debitopay", label: "Cartão Visa / Mastercard" },
+  { value: "emola", label: "e-Mola" },
+  { value: "other", label: "Outros (antigos)" },
+];
+
+const PERIOD_FILTERS = [
+  { value: "all", label: "Todo o período" },
+  { value: "today", label: "Hoje" },
+  { value: "7d", label: "Últimos 7 dias" },
+  { value: "30d", label: "Últimos 30 dias" },
+];
+
+// Método de pagamento escolhido no checkout (para o filtro)
+const paymentKey = (order: any) => {
+  const detail = order.shipping_address?.payment_detail;
+  if (detail === "mpesa_auto" || detail === "debitopay" || detail === "emola") return detail;
+  if (order.payment_method === "debitopay") return "debitopay";
+  return "other";
+};
+
+const periodStart = (period: string) => {
+  const d = new Date();
+  if (period === "today") { d.setHours(0, 0, 0, 0); return d.getTime(); }
+  if (period === "7d") return Date.now() - 7 * 86_400_000;
+  if (period === "30d") return Date.now() - 30 * 86_400_000;
+  return 0;
+};
+
+// Pedido "A processar" que ficou abandonado e já pode ser cancelado sem risco.
+// Sem ID do Débito Pay o pagamento nunca chegou a começar (ex.: erro ao iniciar);
+// com ID, o cliente ainda pode ter pago, por isso só se espera 24 horas.
+const isStale = (order: any) => {
+  if (order.status !== "processing") return false;
+  const minutes = (Date.now() - new Date(order.created_at).getTime()) / 60000;
+  return order.debitopay_payment_id ? minutes >= 24 * 60 : minutes >= 30;
+};
+
+const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+
 const AdminOrders = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +88,8 @@ const AdminOrders = () => {
   const [filter, setFilter] = useState<"all" | OrderStatus>("paid");
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [periodFilter, setPeriodFilter] = useState("all");
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -144,8 +189,9 @@ const AdminOrders = () => {
   const isAuto = (order: any) => !!order.debitopay_payment_id;
 
   const getPaymentDetail = (order: any) => {
-    if (isAuto(order)) return "Débito Pay (automático)";
     const detail = order.shipping_address?.payment_detail;
+    if (detail === "mpesa_auto") return "M-Pesa (automático)";
+    if (isAuto(order)) return "Débito Pay (automático)";
     if (detail === "mpesa") return "M-Pesa";
     if (detail === "emola") return "e-Mola";
     if (detail === "debitopay") return "Débito Pay (automático)";
@@ -174,8 +220,11 @@ const AdminOrders = () => {
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const since = periodStart(periodFilter);
     return orders.filter((o) => {
       if (filter !== "all" && groupStatus(o.status) !== filter) return false;
+      if (paymentFilter !== "all" && paymentKey(o) !== paymentFilter) return false;
+      if (since && new Date(o.created_at).getTime() < since) return false;
       if (!q) return true;
       const hay = [
         o.id,
@@ -185,16 +234,88 @@ const AdminOrders = () => {
       ].filter(Boolean).join(" ").toLowerCase();
       return hay.includes(q);
     });
-  }, [orders, filter, search]);
+  }, [orders, filter, search, paymentFilter, periodFilter]);
+
+  const staleOrders = useMemo(() => orders.filter(isStale), [orders]);
+
+  const cancelStale = async () => {
+    if (staleOrders.length === 0) return;
+    const ok = window.confirm(
+      `Cancelar ${staleOrders.length} pedido(s) "A processar" abandonados?\n\n` +
+      "Só entram pedidos em que o pagamento não chegou a começar (há mais de 30 minutos) " +
+      "ou que estão parados há mais de 24 horas."
+    );
+    if (!ok) return;
+    const ids = staleOrders.map((o) => o.id);
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: "cancelled" as OrderStatus })
+      .in("id", ids)
+      .eq("status", "processing" as any); // só se ainda estiverem por pagar
+    if (error) { toast.error("Erro ao cancelar os pedidos."); return; }
+    toast.success(`${ids.length} pedido(s) cancelado(s).`);
+    fetchOrders();
+  };
+
+  // Exporta a lista que está a ver (com os filtros aplicados) para abrir no Excel
+  const exportCsv = () => {
+    if (visible.length === 0) { toast.error("Não há pedidos para exportar."); return; }
+    const header = ["Pedido", "Data", "Cliente", "Telefone", "Província", "Cidade", "Pagamento", "Estado", "Total (MZN)", "Rastreio"];
+    const rows = visible.map((o) => {
+      const addr = o.shipping_address || {};
+      return [
+        `#${o.id.slice(0, 8).toUpperCase()}`,
+        new Date(o.created_at).toLocaleString("pt-MZ", { dateStyle: "short", timeStyle: "short" }),
+        addr.name || o.profile?.name || o.profile?.email || "Cliente",
+        addr.phone || o.profile?.phone || "",
+        addr.province || "",
+        addr.city || "",
+        getPaymentDetail(o),
+        statusLabels[o.status] || o.status,
+        Number(o.total_mzn || 0),
+        o.tracking_code || "",
+      ];
+    });
+    const csv = "﻿" + [header, ...rows].map((r) => r.map(csvCell).join(";")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    const d = new Date();
+    a.href = url;
+    a.download = `pedidos-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div>
       <div className="mb-4 flex items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">Pedidos</h1>
-        <Button size="sm" variant="outline" onClick={fetchOrders} disabled={loading}>
-          <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Actualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={exportCsv}>
+            <Download className="mr-1 h-4 w-4" /> CSV
+          </Button>
+          <Button size="sm" variant="outline" onClick={fetchOrders} disabled={loading}>
+            <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Actualizar
+          </Button>
+        </div>
       </div>
+
+      {/* Pedidos abandonados */}
+      {staleOrders.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-orange-300 bg-orange-50 p-3 text-sm dark:border-orange-900 dark:bg-orange-950/30">
+          <p className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-600" />
+            <span>
+              {staleOrders.length} {staleOrders.length === 1 ? "pedido ficou" : "pedidos ficaram"} "A processar" sem o pagamento ser concluído.
+            </span>
+          </p>
+          <Button size="sm" variant="outline" onClick={cancelStale}>
+            Cancelar {staleOrders.length === 1 ? "este" : "todos"}
+          </Button>
+        </div>
+      )}
 
       {/* Resumo */}
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -238,6 +359,20 @@ const AdminOrders = () => {
             {t.label} ({counts[t.key] || 0})
           </button>
         ))}
+      </div>
+      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {PAYMENT_FILTERS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={periodFilter} onValueChange={setPeriodFilter}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {PERIOD_FILTERS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="space-y-3">
