@@ -227,13 +227,34 @@ serve(async (req) => {
 
     if (!response.ok || !data?.success) {
       console.error("Debito Pay erro:", response.status, text);
+
+      // Sem cobrança criada: cancela o pedido para não ficar pendente no painel
+      if (!data?.payment_id) {
+        const { error: cancelError } = await supabase
+          .from("orders")
+          .update({ status: "cancelled" })
+          .eq("id", orderId)
+          .in("status", ["pending", "processing"]);
+        if (cancelError) console.error("Erro ao cancelar pedido sem cobrança:", cancelError);
+      }
+
+      const unavailable = response.status === 503 || data?.error === "PAYMENT_METHOD_UNAVAILABLE";
+      let message: string;
+      if (unavailable) {
+        message = method === "mpesa"
+          ? "M-Pesa temporariamente indisponível. Tente mais tarde ou pague com cartão Visa/Mastercard."
+          : "Pagamento por cartão temporariamente indisponível. Tente mais tarde.";
+      } else if (method === "mpesa") {
+        message = "O pagamento M-Pesa não foi concluído. Verifique o número, o saldo e o PIN e tente novamente.";
+      } else {
+        message = "Não foi possível iniciar o pagamento. Tente novamente.";
+      }
+
       return json(
         {
           success: false,
           error: data?.error || `Débito Pay respondeu ${response.status}`,
-          message: method === "mpesa"
-            ? "O pagamento M-Pesa não foi concluído. Verifique o número, o saldo e o PIN e tente novamente."
-            : "Não foi possível iniciar o pagamento. Tente novamente.",
+          message,
           provider_status: response.status,
         },
         502,
