@@ -30,6 +30,19 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+// Mesma regra de promoção do site (src/lib/pricing.ts)
+const effectivePrice = (p: any): number => {
+  const base = Number(p?.price_mzn || 0);
+  const promo = Number(p?.promotional_price_mzn || 0);
+  let active = !!p?.has_promotion && promo > 0 && promo < base;
+  if (active) {
+    const now = new Date();
+    if (p.promotion_start_date && new Date(p.promotion_start_date) > now) active = false;
+    if (p.promotion_end_date && new Date(p.promotion_end_date) < now) active = false;
+  }
+  return active ? promo : base;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -92,6 +105,49 @@ serve(async (req) => {
       return json(
         { success: false, error: `Valor mínimo: ${min} MZN.`, message: `O valor mínimo para este método é ${min} MZN.` },
         400,
+      );
+    }
+
+    // 2b. Confirmar o total no servidor: o total gravado pelo cliente não é de confiança.
+    // Recalcula a partir dos itens, dos preços actuais dos produtos e do frete da província.
+    const { data: orderItems, error: itemsError } = await supabase
+      .from("order_items")
+      .select("quantity, products(price_mzn, promotional_price_mzn, has_promotion, promotion_start_date, promotion_end_date)")
+      .eq("order_id", orderId);
+
+    if (itemsError || !orderItems || orderItems.length === 0) {
+      return json(
+        { success: false, error: "Pedido sem itens.", message: "O pedido não tem produtos. Volte ao carrinho e tente novamente." },
+        400,
+      );
+    }
+
+    let subtotal = 0;
+    for (const it of orderItems as any[]) {
+      const qty = Number(it.quantity);
+      if (!Number.isInteger(qty) || qty <= 0 || !it.products) {
+        return json({ success: false, error: "Itens inválidos.", message: "Há um produto inválido no pedido. Volte ao carrinho." }, 400);
+      }
+      subtotal += effectivePrice(it.products) * qty;
+    }
+
+    const province = String((order.shipping_address as any)?.province ?? "");
+    const { data: rate } = await supabase
+      .from("shipping_rates")
+      .select("price_mzn")
+      .eq("province", province)
+      .maybeSingle();
+    const expected = subtotal + Number(rate?.price_mzn || 0);
+
+    if (Math.abs(expected - amount) > 1) {
+      console.error("Total divergente", { orderId, gravado: amount, esperado: expected });
+      return json(
+        {
+          success: false,
+          error: "Total do pedido não confere.",
+          message: "Os preços foram actualizados. Volte ao carrinho, actualize a página e faça o pedido novamente.",
+        },
+        409,
       );
     }
 
