@@ -23,9 +23,11 @@ const statusLabels: Record<string, string> = {
 const PAID_STATES = ["paid", "shipped", "delivered"];
 const FAILED_STATES = ["cancelled", "rejected"];
 
-const paymentLabel = (method?: string) => {
-  if (method === "debitopay") return "Débito Pay (cartão)";
-  if (method === "mpesa") return "M-Pesa / e-Mola";
+const paymentLabel = (order?: any) => {
+  if (order?.payment_method === "debitopay") {
+    return order?.shipping_address?.payment_detail === "mpesa_auto" ? "M-Pesa" : "Cartão Visa / Mastercard";
+  }
+  if (order?.payment_method === "mpesa") return "M-Pesa";
   return "Transferência Bancária";
 };
 
@@ -84,7 +86,7 @@ const OrderSuccess = () => {
   const confirming = isDebitopay && !failed && !paid;
 
   let title = "Pedido Confirmado!";
-  let message = "O seu comprovante foi enviado. O administrador irá verificar e confirmar o pagamento em breve.";
+  let message = "O seu pedido foi registado. Entraremos em contacto em breve.";
   if (isDebitopay) {
     if (failed) {
       title = "Pagamento não concluído";
@@ -130,7 +132,7 @@ const OrderSuccess = () => {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Método de Pagamento</p>
-                  <p className="font-medium capitalize">{paymentLabel(order.payment_method)}</p>
+                  <p className="font-medium">{paymentLabel(order)}</p>
                 </div>
               </div>
 

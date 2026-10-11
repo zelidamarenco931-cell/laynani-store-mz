@@ -6,7 +6,7 @@ const WHATSAPP_NUMBER = "258868214712";
 const features = [
   { icon: Truck, label: "Entrega Rápida", desc: "3-7 dias úteis" },
   { icon: ShieldCheck, label: "Compra Segura", desc: "Dados protegidos" },
-  { icon: CreditCard, label: "Pagamento Fácil", desc: "M-Pesa, e-Mola, Cartão" },
+  { icon: CreditCard, label: "Pagamento Fácil", desc: "M-Pesa e Cartão" },
   { icon: Headphones, label: "Suporte 24/7", desc: "Sempre disponível" },
 ];
 
@@ -99,7 +99,7 @@ const Footer = () => (
 
         <h4 className="mb-3 mt-6 text-sm font-semibold">Pagamentos aceites</h4>
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-          {["M-Pesa", "e-Mola", "Visa / Mastercard", "Débito Pay"].map((p) => (
+          {["M-Pesa", "Visa / Mastercard", "Débito Pay"].map((p) => (
             <span key={p} className="rounded-md border bg-background px-2 py-1">{p}</span>
           ))}
         </div>

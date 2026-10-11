@@ -29,7 +29,7 @@ const About = () => (
           <h2 className="mb-3 text-xl font-bold">A Nossa Missão</h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
             Queremos democratizar as compras online em Moçambique, tornando-as simples, seguras e acessíveis para todos. 
-            Acreditamos que cada moçambicano merece ter acesso a produtos de qualidade sem sair de casa, com métodos de pagamento locais como M-Pesa e e-Mola.
+            Acreditamos que cada moçambicano merece ter acesso a produtos de qualidade sem sair de casa, com pagamento rápido por M-Pesa ou cartão.
           </p>
         </div>
 
@@ -55,7 +55,7 @@ const About = () => (
           <ul className="list-inside list-disc space-y-2 text-sm text-muted-foreground">
             <li><strong>Transparência</strong> — Preços claros, sem surpresas.</li>
             <li><strong>Qualidade</strong> — Seleccionamos cuidadosamente cada produto.</li>
-            <li><strong>Acessibilidade</strong> — Pagamento via M-Pesa, e-Mola, cartão e PayPal.</li>
+            <li><strong>Acessibilidade</strong> — Pagamento via M-Pesa e cartão Visa/Mastercard.</li>
             <li><strong>Compromisso</strong> — Entrega garantida em todo o território nacional.</li>
           </ul>
         </div>
