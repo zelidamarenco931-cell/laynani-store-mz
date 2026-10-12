@@ -1,13 +1,14 @@
 import { Link } from "react-router-dom";
 import { Truck, ShieldCheck, CreditCard, Headphones, MessageCircle, Instagram, Facebook, Youtube, Phone } from "lucide-react";
+import { DELIVERY_AIR, DELIVERY_SEA, DELIVERY_NOTICE } from "@/lib/delivery";
 
 const WHATSAPP_NUMBER = "258868214712";
 
-const features = [
-  { icon: Truck, label: "Entrega Rápida", desc: "3-7 dias úteis" },
-  { icon: ShieldCheck, label: "Compra Segura", desc: "Dados protegidos" },
-  { icon: CreditCard, label: "Pagamento Fácil", desc: "M-Pesa e Cartão" },
-  { icon: Headphones, label: "Suporte 24/7", desc: "Sempre disponível" },
+const features: { icon: typeof Truck; label: string; desc: string[] }[] = [
+  { icon: Truck, label: "Prazos de entrega", desc: [`Aérea: ${DELIVERY_AIR}`, `Marítima: ${DELIVERY_SEA}`] },
+  { icon: ShieldCheck, label: "Compra Segura", desc: ["Dados protegidos"] },
+  { icon: CreditCard, label: "Pagamento Fácil", desc: ["M-Pesa e Cartão"] },
+  { icon: Headphones, label: "Suporte 24/7", desc: ["Sempre disponível"] },
 ];
 
 // Redes sociais: só aparecem as que tiverem link preenchido.
@@ -32,11 +33,14 @@ const Footer = () => (
             </div>
             <div>
               <p className="text-sm font-semibold">{f.label}</p>
-              <p className="text-xs text-muted-foreground">{f.desc}</p>
+              {f.desc.map((line) => (
+                <p key={line} className="text-xs text-muted-foreground">{line}</p>
+              ))}
             </div>
           </div>
         ))}
       </div>
+      <p className="container px-4 pb-4 text-center text-[11px] text-muted-foreground">{DELIVERY_NOTICE}</p>
     </div>
 
     {/* Corpo */}
