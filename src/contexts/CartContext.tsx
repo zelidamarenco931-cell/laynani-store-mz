@@ -1,18 +1,24 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 export interface CartItem {
-  id: string;
+  id: string; // id do produto
   name: string;
   price: number;
   image: string;
   quantity: number;
+  size?: string;
+  color?: string;
 }
+
+// Identifica uma linha do carrinho: o mesmo produto em tamanhos/cores diferentes são linhas diferentes
+export const cartLineKey = (item: Pick<CartItem, "id" | "size" | "color">) =>
+  `${item.id}|${item.size ?? ""}|${item.color ?? ""}`;
 
 interface CartContextType {
   items: CartItem[];
   addItem: (item: Omit<CartItem, "quantity">) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
+  removeItem: (lineKey: string) => void;
+  updateQuantity: (lineKey: string, quantity: number) => void;
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
@@ -41,17 +47,18 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const addItem = (item: Omit<CartItem, "quantity">) => {
     setItems((prev) => {
-      const existing = prev.find((i) => i.id === item.id);
-      if (existing) return prev.map((i) => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
+      const key = cartLineKey(item);
+      const existing = prev.find((i) => cartLineKey(i) === key);
+      if (existing) return prev.map((i) => (cartLineKey(i) === key ? { ...i, quantity: i.quantity + 1 } : i));
       return [...prev, { ...item, quantity: 1 }];
     });
   };
 
-  const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id));
+  const removeItem = (lineKey: string) => setItems((prev) => prev.filter((i) => cartLineKey(i) !== lineKey));
 
-  const updateQuantity = (id: string, quantity: number) => {
-    if (quantity <= 0) return removeItem(id);
-    setItems((prev) => prev.map((i) => i.id === id ? { ...i, quantity } : i));
+  const updateQuantity = (lineKey: string, quantity: number) => {
+    if (quantity <= 0) return removeItem(lineKey);
+    setItems((prev) => prev.map((i) => (cartLineKey(i) === lineKey ? { ...i, quantity } : i)));
   };
 
   const clearCart = () => setItems([]);
