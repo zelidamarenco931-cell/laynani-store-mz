@@ -1,14 +1,14 @@
 import { Link } from "react-router-dom";
-import { Truck, ShieldCheck, CreditCard, Headphones, MessageCircle, Instagram, Facebook, Youtube, Phone } from "lucide-react";
-import { DELIVERY_AIR, DELIVERY_SEA, DELIVERY_NOTICE } from "@/lib/delivery";
+import { ShieldCheck, CreditCard, Headphones, MessageCircle, Instagram, Facebook, Youtube, Phone } from "lucide-react";
+
+import DeliveryTimes from "@/components/DeliveryTimes";
 
 const WHATSAPP_NUMBER = "258868214712";
 
-const features: { icon: typeof Truck; label: string; desc: string[] }[] = [
-  { icon: Truck, label: "Prazos de entrega", desc: [`Aérea: ${DELIVERY_AIR}`, `Marítima: ${DELIVERY_SEA}`] },
-  { icon: ShieldCheck, label: "Compra Segura", desc: ["Dados protegidos"] },
-  { icon: CreditCard, label: "Pagamento Fácil", desc: ["M-Pesa e Cartão"] },
-  { icon: Headphones, label: "Suporte 24/7", desc: ["Sempre disponível"] },
+const features = [
+  { icon: ShieldCheck, label: "Compra Segura", desc: "Dados protegidos" },
+  { icon: CreditCard, label: "Pagamento Fácil", desc: "M-Pesa e Cartão" },
+  { icon: Headphones, label: "Suporte 24/7", desc: "Sempre disponível" },
 ];
 
 // Redes sociais: só aparecem as que tiverem link preenchido.
@@ -25,7 +25,7 @@ const Footer = () => (
   <footer className="mt-auto border-t">
     {/* Vantagens */}
     <div className="border-b bg-muted/50">
-      <div className="container grid grid-cols-2 gap-4 py-6 md:grid-cols-4">
+      <div className="container grid grid-cols-1 gap-4 py-6 sm:grid-cols-3">
         {features.map((f) => (
           <div key={f.label} className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -33,14 +33,11 @@ const Footer = () => (
             </div>
             <div>
               <p className="text-sm font-semibold">{f.label}</p>
-              {f.desc.map((line) => (
-                <p key={line} className="text-xs text-muted-foreground">{line}</p>
-              ))}
+              <p className="text-xs text-muted-foreground">{f.desc}</p>
             </div>
           </div>
         ))}
       </div>
-      <p className="container px-4 pb-4 text-center text-[11px] text-muted-foreground">{DELIVERY_NOTICE}</p>
     </div>
 
     {/* Corpo */}
@@ -107,6 +104,9 @@ const Footer = () => (
             <span key={p} className="rounded-md border bg-background px-2 py-1">{p}</span>
           ))}
         </div>
+
+        <h4 className="mb-3 mt-6 text-sm font-semibold">Prazos de entrega</h4>
+        <DeliveryTimes className="text-muted-foreground" />
       </div>
     </div>
 

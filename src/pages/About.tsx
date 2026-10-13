@@ -1,6 +1,6 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Users, Heart, Globe, Truck } from "lucide-react";
+import { Users, Heart, Globe } from "lucide-react";
 
 const About = () => (
   <div className="flex min-h-screen flex-col">
@@ -33,12 +33,11 @@ const About = () => (
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-3">
           {[
             { icon: Users, label: "Equipa Dedicada", desc: "Profissionais ao seu serviço" },
             { icon: Heart, label: "Feito com Amor", desc: "Para o povo moçambicano" },
             { icon: Globe, label: "Todo Moçambique", desc: "De Maputo a Cabo Delgado" },
-            { icon: Truck, label: "Entrega", desc: "Veja os prazos no rodapé" },
           ].map((item) => (
             <div key={item.label} className="rounded-xl border bg-card p-4 text-center shadow-card">
               <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
