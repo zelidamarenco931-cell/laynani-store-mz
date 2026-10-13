@@ -1,4 +1,4 @@
-import { useParams, Link, useSearchParams } from "react-router-dom";
+import { useParams, Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -28,6 +28,7 @@ const PREDEFINED_COLORS: Record<string, string> = {
 const ProductDetail = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { addItem } = useCart();
   const { user } = useAuth();
   const [product, setProduct] = useState<any>(null);
@@ -44,6 +45,11 @@ const ProductDetail = () => {
 
   useEffect(() => {
     if (!id) return;
+    // Ao mudar de produto, limpa a escolha anterior (evita ficar com o tamanho/cor de outro artigo)
+    setSelectedColor(null);
+    setSelectedSize(null);
+    setQty(1);
+
     const fetchProduct = async () => {
       const { data } = await supabase.from("products").select("*, categories(name, slug)").eq("id", id).single();
       setProduct(data);
@@ -103,13 +109,23 @@ const ProductDetail = () => {
     return `${days}d ${hours}h`;
   }, [isPromoActive, product]);
 
-  const handleAdd = () => {
-    if (colors.length > 0 && !selectedColor) { toast.error("Selecione uma cor."); return; }
-    if (sizes.length > 0 && !selectedSize) { toast.error("Selecione um tamanho."); return; }
+  // Devolve true se o artigo foi adicionado (tamanho/cor escolhidos quando o produto os tem)
+  const handleAdd = (): boolean => {
+    if (colors.length > 0 && !selectedColor) { toast.error("Selecione uma cor."); return false; }
+    if (sizes.length > 0 && !selectedSize) { toast.error("Selecione um tamanho."); return false; }
     for (let i = 0; i < qty; i++) {
-      addItem({ id: product.id, name: product.name, price: finalPrice, image: images[0] });
+      addItem({
+        id: product.id,
+        name: product.name,
+        price: finalPrice,
+        image: images[0],
+        size: selectedSize ?? undefined,
+        color: selectedColor ?? undefined,
+      });
     }
-    toast.success(`${qty}x ${product.name} adicionado!`);
+    const variant = [selectedSize && `Tamanho ${selectedSize}`, selectedColor && `Cor ${selectedColor}`].filter(Boolean).join(", ");
+    toast.success(`${qty}x ${product.name}${variant ? ` (${variant})` : ""} adicionado!`);
+    return true;
   };
 
   const handleShare = (platform: string) => {
@@ -299,7 +315,7 @@ const ProductDetail = () => {
 
             {/* Buy now + Favorite + Share */}
             <div className="flex gap-2">
-              <Button variant="outline" className="min-w-0 flex-1 text-sm sm:text-base" onClick={() => { handleAdd(); window.location.href = "/checkout"; }} disabled={product.stock === 0}>
+              <Button variant="outline" className="min-w-0 flex-1 text-sm sm:text-base" onClick={() => { if (handleAdd()) navigate("/checkout"); }} disabled={product.stock === 0}>
                 <Zap className="mr-1.5 h-4 w-4 shrink-0" /> <span className="truncate">Comprar Agora</span>
               </Button>
               <Button variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => { setIsFavorite(!isFavorite); toast.success(isFavorite ? "Removido dos favoritos" : "Salvo nos favoritos!"); }}>
