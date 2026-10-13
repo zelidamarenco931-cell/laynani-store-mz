@@ -1,21 +1,20 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import {
-  Plus, Pencil, Trash2, Upload, X, ImageIcon, Package, Ruler, Palette, Weight, Hash, Search, Calendar,
-  Percent, Copy, ChevronRight, Check, Star, ExternalLink, AlertTriangle, CheckCircle, XCircle, Loader2,
+  Plus, Pencil, Trash2, X, ImageIcon, Package, Ruler, Palette, Search, Percent, Copy, Check, Star,
+  ExternalLink, AlertTriangle, CheckCircle, XCircle, Loader2, ChevronDown, SlidersHorizontal,
 } from "lucide-react";
-import { prepareImage } from "@/lib/imageUpload";
 
 const PREDEFINED_COLORS = [
   { name: "Preto", hex: "#000000" }, { name: "Branco", hex: "#FFFFFF" },
@@ -35,38 +34,101 @@ const SIZE_OPTIONS: Record<string, string[]> = {
 
 const LOW_STOCK = 5;
 const MAX_IMAGES = 10;
+const MAX_SIDE = 1600;
 
-// Os prazos de entrega e o SEO deixaram de ter ecrã próprio: mantêm-se no produto (valores por omissão
-// em produtos novos, intactos ao editar) mas não aparecem no formulário.
 interface ProductForm {
   name: string; description: string; price_mzn: string; promotional_price_mzn: string;
   stock: string; category_id: string; sku: string; status: string;
   has_promotion: boolean; promotion_start_date: string; promotion_end_date: string;
-  delivery_time_min: string; delivery_time_max: string; origin: string;
   meta_title: string; meta_description: string; tags: string; weight: string;
 }
 
 const emptyForm: ProductForm = {
   name: "", description: "", price_mzn: "", promotional_price_mzn: "",
-  stock: "0", category_id: "", sku: "", status: "active",
+  stock: "", category_id: "", sku: "", status: "active",
   has_promotion: false, promotion_start_date: "", promotion_end_date: "",
-  delivery_time_min: "7", delivery_time_max: "20", origin: "local",
   meta_title: "", meta_description: "", tags: "", weight: "",
 };
 
-// Foto na lista: já guardada (só url) ou nova (ficheiro preparado + pré-visualização local)
-interface Photo { key: string; url: string; file?: File }
-
 const mzn = (n: number) => `${Number(n).toLocaleString("pt-MZ")} MZN`;
 const slugPart = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 6) || "PROD";
-const revoke = (list: Photo[]) => list.forEach((p) => p.file && URL.revokeObjectURL(p.url));
-const newId = () =>
-  typeof crypto !== "undefined" && "randomUUID" in crypto
+
+const newId = (): string =>
+  typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
     ? crypto.randomUUID()
     : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
         const r = (Math.random() * 16) | 0;
         return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
       });
+
+// Lê a foto logo ao escolhê-la e guarda uma cópia em memória (JPEG reduzido).
+// No telemóvel o ficheiro original pode deixar de estar acessível passado algum tempo,
+// por isso ao guardar o produto nunca dependemos dele.
+const processImage = async (file: File): Promise<File> => {
+  const base = (file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 30)) || "foto";
+  const name = `${base}.jpg`;
+
+  const draw = (src: CanvasImageSource, w: number, h: number): Promise<File> => {
+    const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(w * scale));
+    canvas.height = Math.max(1, Math.round(h * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return Promise.reject(new Error("canvas"));
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(src, 0, 0, canvas.width, canvas.height);
+    return new Promise((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(new File([b], name, { type: "image/jpeg" })) : reject(new Error("blob"))), "image/jpeg", 0.85),
+    );
+  };
+
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bmp = await createImageBitmap(file);
+      try { return await draw(bmp, bmp.width, bmp.height); } finally { bmp.close(); }
+    } catch { /* tenta com <img> */ }
+  }
+
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("decode"));
+      el.src = url;
+    });
+    return await draw(img, img.naturalWidth, img.naturalHeight);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+};
+
+const Section = ({ title, right, children }: { title: string; right?: ReactNode; children: ReactNode }) => (
+  <section className="space-y-3">
+    <div className="flex items-center justify-between gap-2">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      {right}
+    </div>
+    {children}
+  </section>
+);
+
+const Fold = ({ title, icon: Icon, hint, defaultOpen, children }: {
+  title: string; icon: typeof Palette; hint?: string; defaultOpen?: boolean; children: ReactNode;
+}) => (
+  <Collapsible defaultOpen={defaultOpen} className="rounded-lg border">
+    <CollapsibleTrigger className="group flex w-full items-center justify-between gap-2 p-3 text-left">
+      <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
+        <Icon className="h-4 w-4 shrink-0 text-primary" />
+        {title}
+        {hint && <span className="truncate text-xs font-normal text-muted-foreground">{hint}</span>}
+      </span>
+      <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+    </CollapsibleTrigger>
+    <CollapsibleContent className="space-y-4 border-t p-3">{children}</CollapsibleContent>
+  </Collapsible>
+);
 
 const AdminProducts = () => {
   const [products, setProducts] = useState<any[]>([]);
@@ -77,11 +139,11 @@ const AdminProducts = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [form, setForm] = useState<ProductForm>({ ...emptyForm });
-  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [processing, setProcessing] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState("");
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [selectedColors, setSelectedColors] = useState<{ name: string; hex: string }[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [sizeCategory, setSizeCategory] = useState("roupas");
@@ -89,8 +151,6 @@ const AdminProducts = () => {
   const [customColorName, setCustomColorName] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const snapshot = useRef("");
-  const photosRef = useRef<Photo[]>([]);
-  photosRef.current = photos;
 
   const fetchData = useCallback(async () => {
     const [{ data: p }, { data: c }] = await Promise.all([
@@ -102,177 +162,184 @@ const AdminProducts = () => {
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-  useEffect(() => () => revoke(photosRef.current), []);
+
+  // Pré-visualizações das imagens novas (com limpeza de memória)
+  const previews = useMemo(() => mediaFiles.map((f) => URL.createObjectURL(f)), [mediaFiles]);
+  useEffect(() => () => previews.forEach((u) => URL.revokeObjectURL(u)), [previews]);
 
   const currentSnapshot = () =>
-    JSON.stringify([form, selectedColors, selectedSizes, photos.map((p) => p.key)]);
+    JSON.stringify([form, selectedColors, selectedSizes, existingImages, mediaFiles.map((f) => f.name + f.size)]);
 
   const resetForm = () => {
-    revoke(photosRef.current);
     setForm({ ...emptyForm });
     setEditing(null);
-    setPhotos([]);
+    setMediaFiles([]);
+    setExistingImages([]);
     setSelectedColors([]);
     setSelectedSizes([]);
-    setAdvancedOpen(false);
     setProcessing(false);
+    setSaving(false);
     setProgress("");
   };
 
   const openNew = () => {
     resetForm();
-    snapshot.current = JSON.stringify([emptyForm, [], [], []]);
+    snapshot.current = JSON.stringify([emptyForm, [], [], [], []]);
     setDialogOpen(true);
   };
 
   const loadProduct = (p: any, asCopy = false) => {
-    revoke(photosRef.current);
     const f: ProductForm = {
       name: asCopy ? `${p.name} (Cópia)` : p.name, description: p.description || "", price_mzn: String(p.price_mzn),
       promotional_price_mzn: p.promotional_price_mzn ? String(p.promotional_price_mzn) : "",
       stock: String(p.stock ?? 0), category_id: p.category_id || "", sku: asCopy ? "" : p.sku || "",
       status: p.status || "active", has_promotion: p.has_promotion || false,
       promotion_start_date: p.promotion_start_date || "", promotion_end_date: p.promotion_end_date || "",
-      delivery_time_min: String(p.delivery_time_min || 7), delivery_time_max: String(p.delivery_time_max || 20),
-      origin: p.origin || "local", meta_title: p.meta_title || "", meta_description: p.meta_description || "",
+      meta_title: p.meta_title || "", meta_description: p.meta_description || "",
       tags: (p.tags || []).join(", "), weight: p.weight ? String(p.weight) : "",
     };
     const colors = p.color
       ? p.color.split(",").map((c: string) => c.trim()).filter(Boolean).map((c: string) => PREDEFINED_COLORS.find((pc) => pc.name === c) || { name: c, hex: "#888888" })
       : [];
     const sizes = p.size ? p.size.split(",").map((s: string) => s.trim()).filter(Boolean) : [];
-    const list: Photo[] = (p.images || []).map((url: string, i: number) => ({ key: `old-${i}-${url}`, url }));
+    const imgs = p.images || [];
 
     setEditing(asCopy ? null : p);
     setForm(f);
     setSelectedColors(colors);
     setSelectedSizes(sizes);
-    setPhotos(list);
-    setAdvancedOpen(!!(f.has_promotion || colors.length || sizes.length || f.weight || f.tags));
-    snapshot.current = JSON.stringify([f, colors, sizes, list.map((x) => x.key)]);
+    setExistingImages(imgs);
+    setMediaFiles([]);
+    snapshot.current = JSON.stringify([f, colors, sizes, imgs, []]);
     setDialogOpen(true);
   };
 
   const requestClose = (open: boolean) => {
     if (open) { setDialogOpen(true); return; }
-    if (uploading) return;
+    if (saving) return;
     if (currentSnapshot() !== snapshot.current && !window.confirm("Tem alterações por guardar. Sair mesmo assim?")) return;
     setDialogOpen(false);
     resetForm();
   };
 
-  // Lê e reduz cada foto logo ao escolher; se alguma não puder ser lida, avisa já (e não só ao guardar).
+  // ---------- Fotos ----------
   const addFiles = async (files: File[]) => {
-    const room = MAX_IMAGES - photosRef.current.length;
+    if (!files.length) return;
+    const room = MAX_IMAGES - existingImages.length - mediaFiles.length;
     if (room <= 0) { toast.error(`Máximo de ${MAX_IMAGES} fotos.`); return; }
     if (files.length > room) toast.message(`Só cabem mais ${room} foto(s). As restantes foram ignoradas.`);
 
     setProcessing(true);
-    const added: Photo[] = [];
+    const ready: File[] = [];
+    let failed = 0;
     for (const f of files.slice(0, room)) {
-      try {
-        const out = await prepareImage(f);
-        added.push({ key: `new-${out.name}`, url: URL.createObjectURL(out), file: out });
-      } catch {
-        toast.error(`Não foi possível ler "${f.name || "a foto"}". Tente outra foto (JPG, PNG ou WebP).`);
-      }
+      try { ready.push(await processImage(f)); } catch { failed++; }
     }
-    setPhotos((prev) => [...prev, ...added]);
     setProcessing(false);
+
+    if (failed) toast.error(failed === 1 ? "Não foi possível ler uma das fotos. Use JPG, PNG ou WebP." : `Não foi possível ler ${failed} fotos. Use JPG, PNG ou WebP.`);
+    if (ready.length) setMediaFiles((prev) => [...prev, ...ready]);
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    await addFiles(files); // só limpa o seletor depois de as fotos estarem lidas
-    if (fileRef.current) fileRef.current.value = "";
+    const input = e.target;
+    const files = Array.from(input.files || []);
+    await addFiles(files);
+    input.value = "";
   };
 
-  const makeCover = (idx: number) => setPhotos((prev) => [prev[idx], ...prev.filter((_, i) => i !== idx)]);
-  const removePhoto = (idx: number) => {
-    setPhotos((prev) => {
-      revoke([prev[idx]]);
-      return prev.filter((_, i) => i !== idx);
-    });
+  const makeMain = (idx: number) => setExistingImages((prev) => [prev[idx], ...prev.filter((_, i) => i !== idx)]);
+  const makeMainNew = (idx: number) => setMediaFiles((prev) => [prev[idx], ...prev.filter((_, i) => i !== idx)]);
+
+  const uploadOne = async (productId: string, file: File): Promise<{ path: string; url: string }> => {
+    const path = `${productId}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { error } = await supabase.storage.from("product-images").upload(path, file, { contentType: "image/jpeg", upsert: true });
+      if (!error) return { path, url: supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl };
+      await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+    }
+    throw new Error("upload");
   };
 
+  const removeUploaded = async (list: { path: string }[]) => {
+    if (!list.length) return;
+    try { await supabase.storage.from("product-images").remove(list.map((u) => u.path)); } catch { /* best-effort */ }
+  };
+
+  // Envia todas as fotos novas. Se alguma falhar, apaga as já enviadas e cancela (não cria produto sem foto por engano).
+  const uploadAll = async (productId: string) => {
+    const done: { path: string; url: string }[] = [];
+    try {
+      for (let i = 0; i < mediaFiles.length; i++) {
+        setProgress(`A enviar fotos ${i + 1}/${mediaFiles.length}...`);
+        done.push(await uploadOne(productId, mediaFiles[i]));
+      }
+      return done;
+    } catch (e) {
+      await removeUploaded(done);
+      throw e;
+    }
+  };
+
+  // ---------- Validação e guardar ----------
   const price = Number(form.price_mzn) || 0;
   const promo = Number(form.promotional_price_mzn) || 0;
   const promoValid = form.has_promotion && promo > 0 && promo < price;
   const discountPercent = promoValid ? Math.round((1 - promo / price) * 100) : 0;
 
   const handleSave = async () => {
-    if (!form.name.trim()) { toast.error("Indique o nome do produto."); return; }
-    if (!(price > 0)) { toast.error("Indique o preço."); return; }
-    if (form.has_promotion && form.promotional_price_mzn && !promoValid) {
-      toast.error("O preço promocional deve ser menor que o normal.");
-      setAdvancedOpen(true);
+    if (processing) { toast.message("A preparar as fotos... só um momento."); return; }
+    if (!form.name.trim()) { toast.error("Escreva o nome do produto."); return; }
+    if (!(price > 0)) { toast.error("Indique o preço do produto."); return; }
+    if (form.has_promotion && form.promotional_price_mzn && !promoValid) { toast.error("O preço promocional deve ser menor que o normal."); return; }
+
+    setSaving(true);
+    const payload: any = {
+      name: form.name.trim(), description: form.description,
+      price_mzn: price, stock: Math.max(Number(form.stock) || 0, 0),
+      category_id: form.category_id || null,
+      sku: form.sku.trim() || (editing?.sku ?? `LYN-${slugPart(form.name)}-${Date.now().toString().slice(-4)}`),
+      status: form.status,
+      has_promotion: form.has_promotion,
+      promotional_price_mzn: form.has_promotion && form.promotional_price_mzn ? promo : null,
+      promotion_start_date: form.has_promotion && form.promotion_start_date ? form.promotion_start_date : null,
+      promotion_end_date: form.has_promotion && form.promotion_end_date ? form.promotion_end_date : null,
+      meta_title: form.meta_title || null,
+      meta_description: form.meta_description || null,
+      tags: form.tags ? form.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+      color: selectedColors.map((c) => c.name).join(", ") || null,
+      size: selectedSizes.join(", ") || null,
+      weight: form.weight || null,
+    };
+
+    try {
+      if (editing) {
+        const uploaded = mediaFiles.length ? await uploadAll(editing.id) : [];
+        const { error } = await supabase.from("products").update({ ...payload, images: [...existingImages, ...uploaded.map((u) => u.url)] }).eq("id", editing.id);
+        if (error) { await removeUploaded(uploaded); throw error; }
+        toast.success("Produto actualizado!");
+      } else {
+        const id = newId();
+        const uploaded = mediaFiles.length ? await uploadAll(id) : [];
+        const { error } = await supabase.from("products").insert({ ...payload, id, images: [...existingImages, ...uploaded.map((u) => u.url)] });
+        if (error) { await removeUploaded(uploaded); throw error; }
+        toast.success("Produto criado!");
+      }
+    } catch (e: any) {
+      toast.error(
+        e?.message === "upload"
+          ? "Não foi possível enviar as fotos. Verifique a internet e tente de novo. O produto não foi guardado."
+          : "Não foi possível guardar o produto. Tente de novo.",
+      );
+      setSaving(false);
+      setProgress("");
       return;
     }
-    if (processing) { toast.message("A preparar as fotos... um momento."); return; }
 
-    setUploading(true);
-    const productId: string = editing?.id ?? newId();
-    const uploaded: string[] = [];
-    try {
-      // 1) Envia as fotos novas. Se alguma falhar, o produto NÃO é criado/alterado (nada fica sem foto em silêncio).
-      const newCount = photos.filter((p) => p.file).length;
-      const urls: string[] = [];
-      let n = 0;
-      for (const p of photos) {
-        if (!p.file) { urls.push(p.url); continue; }
-        n++;
-        setProgress(`A enviar foto ${n} de ${newCount}...`);
-        const path = `${productId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
-        const { error } = await supabase.storage.from("product-images").upload(path, p.file, {
-          contentType: "image/jpeg",
-          cacheControl: "31536000",
-        });
-        if (error) throw new Error(`Não foi possível enviar a foto ${n}. Verifique a internet e tente de novo.`);
-        uploaded.push(path);
-        urls.push(supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl);
-      }
-
-      // 2) Guarda o produto já com as fotos
-      setProgress("A guardar...");
-      const payload: any = {
-        name: form.name.trim(), description: form.description,
-        price_mzn: price, stock: Math.max(Number(form.stock) || 0, 0),
-        category_id: form.category_id || null,
-        sku: form.sku.trim() || (editing?.sku ?? `LYN-${slugPart(form.name)}-${Date.now().toString().slice(-4)}`),
-        status: form.status,
-        has_promotion: form.has_promotion,
-        promotional_price_mzn: form.has_promotion && form.promotional_price_mzn ? promo : null,
-        promotion_start_date: form.has_promotion && form.promotion_start_date ? form.promotion_start_date : null,
-        promotion_end_date: form.has_promotion && form.promotion_end_date ? form.promotion_end_date : null,
-        delivery_time_min: Number(form.delivery_time_min) || 7,
-        delivery_time_max: Number(form.delivery_time_max) || 20,
-        origin: form.origin,
-        meta_title: form.meta_title || null,
-        meta_description: form.meta_description || null,
-        tags: form.tags ? form.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
-        color: selectedColors.map((c) => c.name).join(", ") || null,
-        size: selectedSizes.join(", ") || null,
-        weight: form.weight || null,
-        images: urls,
-      };
-
-      const { error } = editing
-        ? await supabase.from("products").update(payload).eq("id", editing.id)
-        : await supabase.from("products").insert({ id: productId, ...payload });
-      if (error) throw new Error(editing ? "Erro ao actualizar o produto." : "Erro ao criar o produto.");
-
-      toast.success(editing ? "Produto actualizado!" : "Produto criado!");
-      snapshot.current = currentSnapshot();
-      setDialogOpen(false);
-      resetForm();
-      fetchData();
-    } catch (e: any) {
-      if (uploaded.length) await supabase.storage.from("product-images").remove(uploaded).catch(() => undefined);
-      toast.error(e?.message || "Não foi possível guardar. Tente de novo.");
-    } finally {
-      setUploading(false);
-      setProgress("");
-    }
+    snapshot.current = currentSnapshot();
+    setDialogOpen(false);
+    resetForm();
+    fetchData();
   };
 
   const handleDelete = async (p: any) => {
@@ -322,6 +389,9 @@ const AdminProducts = () => {
     });
   }, [products, searchQuery, categoryFilter, statusFilter]);
 
+  const totalMediaCount = existingImages.length + mediaFiles.length;
+  const colorsHint = [selectedColors.length ? `${selectedColors.length} cor(es)` : "", selectedSizes.length ? `${selectedSizes.length} tamanho(s)` : ""].filter(Boolean).join(" · ");
+
   const statCards = [
     { t: "Produtos", v: stats.total, i: Package, c: "bg-blue-50 text-blue-600" },
     { t: "Activos", v: stats.active, i: CheckCircle, c: "bg-emerald-50 text-emerald-600" },
@@ -331,8 +401,6 @@ const AdminProducts = () => {
   const statusChips = [
     { k: "all", l: "Todos" }, { k: "active", l: "Activos" }, { k: "inactive", l: "Inactivos" }, { k: "low", l: "Stock baixo" }, { k: "out", l: "Esgotados" },
   ];
-
-  const saveLabel = uploading ? progress || "A guardar..." : editing ? "Guardar alterações" : "Criar produto";
 
   return (
     <div className="space-y-5 overflow-x-hidden">
@@ -429,52 +497,60 @@ const AdminProducts = () => {
         </div>
       )}
 
-      {/* Formulário numa só página */}
+      {/* Formulário único */}
       <Dialog open={dialogOpen} onOpenChange={requestClose}>
-        <DialogContent className="flex max-h-[92vh] w-[95vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+        <DialogContent className="flex max-h-[92vh] w-[95vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
           <DialogHeader className="border-b px-4 py-3 text-left sm:px-6">
             <DialogTitle className="flex items-center gap-2">
               <Package className="h-5 w-5 text-primary" />
               {editing ? "Editar Produto" : "Novo Produto"}
             </DialogTitle>
+            <DialogDescription className="sr-only">Preencha os dados do produto e guarde.</DialogDescription>
           </DialogHeader>
 
-          <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4 sm:px-6">
+          <div className="flex-1 space-y-6 overflow-y-auto px-4 py-4 sm:px-6">
             {/* Fotos */}
-            <section className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label className="flex items-center gap-1.5"><ImageIcon className="h-4 w-4" /> Fotos</Label>
-                <span className="text-xs text-muted-foreground">{photos.length}/{MAX_IMAGES} · a primeira é a capa</span>
-              </div>
+            <Section title="Fotos" right={<span className="text-xs text-muted-foreground">{totalMediaCount}/{MAX_IMAGES} · a 1.ª é a capa</span>}>
               <input ref={fileRef} type="file" multiple accept="image/*" onChange={handleFileSelect} className="hidden" />
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {photos.length < MAX_IMAGES && (
-                  <button type="button" onClick={() => fileRef.current?.click()} disabled={processing || uploading}
-                    className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-muted-foreground/30 text-muted-foreground transition-colors hover:border-primary/50 hover:bg-muted/50 disabled:opacity-60">
-                    {processing ? <Loader2 className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6" />}
-                    <span className="text-[11px] font-medium">{processing ? "A preparar..." : "Adicionar"}</span>
-                  </button>
-                )}
-                {photos.map((p, i) => (
-                  <div key={p.key} className={`relative aspect-square overflow-hidden rounded-lg bg-muted ${i === 0 ? "ring-2 ring-primary" : "border"}`}>
-                    <img src={p.url} alt="" className="h-full w-full object-cover" />
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {existingImages.map((url, i) => (
+                  <div key={url + i} className={`relative aspect-square overflow-hidden rounded-lg ${i === 0 ? "ring-2 ring-primary" : "border"}`}>
+                    <img src={url} alt="" className="h-full w-full object-cover" />
                     {i === 0 ? (
-                      <span className="absolute left-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">Capa</span>
+                      <span className="absolute left-1 top-1 rounded bg-primary px-1 py-0.5 text-[9px] font-bold text-primary-foreground">Capa</span>
                     ) : (
-                      <button type="button" onClick={() => makeCover(i)} title="Definir como capa" disabled={uploading}
-                        className="absolute left-1 top-1 rounded-full bg-background/90 p-1.5 shadow"><Star className="h-3.5 w-3.5" /></button>
+                      <button type="button" onClick={() => makeMain(i)} title="Definir como capa" className="absolute left-1 top-1 rounded-full bg-background/90 p-1 shadow"><Star className="h-3 w-3" /></button>
                     )}
-                    <button type="button" onClick={() => removePhoto(i)} title="Remover foto" disabled={uploading}
-                      className="absolute right-1 top-1 rounded-full bg-destructive p-1.5 text-destructive-foreground"><X className="h-3.5 w-3.5" /></button>
+                    <button type="button" onClick={() => setExistingImages((p) => p.filter((_, j) => j !== i))} title="Remover" className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground"><X className="h-3 w-3" /></button>
                   </div>
                 ))}
+                {previews.map((url, i) => (
+                  <div key={url} className={`relative aspect-square overflow-hidden rounded-lg bg-muted ${existingImages.length === 0 && i === 0 ? "ring-2 ring-primary" : "border"}`}>
+                    <img src={url} alt="" className="h-full w-full object-cover" />
+                    {existingImages.length === 0 && i === 0 ? (
+                      <span className="absolute left-1 top-1 rounded bg-primary px-1 py-0.5 text-[9px] font-bold text-primary-foreground">Capa</span>
+                    ) : existingImages.length === 0 ? (
+                      <button type="button" onClick={() => makeMainNew(i)} title="Definir como capa" className="absolute left-1 top-1 rounded-full bg-background/90 p-1 shadow"><Star className="h-3 w-3" /></button>
+                    ) : (
+                      <span className="absolute left-1 top-1 rounded bg-amber-500 px-1 py-0.5 text-[9px] font-bold text-white">Nova</span>
+                    )}
+                    <button type="button" onClick={() => setMediaFiles((p) => p.filter((_, j) => j !== i))} title="Remover" className="absolute right-1 top-1 rounded-full bg-destructive p-1 text-destructive-foreground"><X className="h-3 w-3" /></button>
+                  </div>
+                ))}
+                {totalMediaCount < MAX_IMAGES && (
+                  <button type="button" onClick={() => fileRef.current?.click()} disabled={processing}
+                    className="flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-muted-foreground/30 text-muted-foreground transition-colors hover:border-primary/50 hover:bg-muted/50 disabled:opacity-60">
+                    {processing ? <Loader2 className="h-6 w-6 animate-spin" /> : <Plus className="h-6 w-6" />}
+                    <span className="text-[11px] font-medium">{processing ? "A ler..." : "Adicionar"}</span>
+                  </button>
+                )}
               </div>
-            </section>
+            </Section>
 
-            {/* Essencial */}
-            <section className="space-y-4">
+            {/* Dados principais */}
+            <Section title="Produto">
               <div className="space-y-1.5">
-                <Label>Nome do produto *</Label>
+                <Label>Nome *</Label>
                 <Input value={form.name} maxLength={120} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex: Camiseta Casual Premium" />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -484,12 +560,10 @@ const AdminProducts = () => {
                 </div>
                 <div className="space-y-1.5">
                   <Label>Stock</Label>
-                  <Input type="number" inputMode="numeric" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} />
+                  <Input type="number" inputMode="numeric" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} placeholder="Ex: 20" />
                 </div>
               </div>
-              {Number(form.stock) <= LOW_STOCK && (
-                <p className="-mt-2 text-xs text-amber-600">{Number(form.stock) === 0 ? "Produto aparecerá como esgotado" : "Stock baixo"}</p>
-              )}
+              {form.stock !== "" && Number(form.stock) <= LOW_STOCK && <p className="-mt-1 text-xs text-amber-600">{Number(form.stock) === 0 ? "O produto vai aparecer como esgotado" : "Stock baixo"}</p>}
               <div className="space-y-1.5">
                 <Label>Categoria</Label>
                 <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
@@ -508,40 +582,33 @@ const AdminProducts = () => {
                 </div>
                 <Switch checked={form.status === "active"} onCheckedChange={(v) => setForm({ ...form, status: v ? "active" : "inactive" })} />
               </div>
-            </section>
+            </Section>
 
-            {/* Opcional: promoção, cores, tamanhos... */}
-            <details open={advancedOpen} onToggle={(e) => setAdvancedOpen((e.target as HTMLDetailsElement).open)} className="group rounded-lg border">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 p-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
-                <span>Mais opções <span className="font-normal text-muted-foreground">(promoção, cores, tamanhos…)</span></span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
-              </summary>
-              <div className="space-y-5 border-t p-3">
-                {/* Promoção */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2"><Percent className="h-4 w-4 text-primary" /><Label>Preço promocional</Label></div>
-                    <Switch checked={form.has_promotion} onCheckedChange={(v) => setForm({ ...form, has_promotion: v })} />
+            {/* Promoção */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                <div className="flex items-center gap-2"><Percent className="h-4 w-4 text-primary" /><Label>Preço promocional</Label></div>
+                <Switch checked={form.has_promotion} onCheckedChange={(v) => setForm({ ...form, has_promotion: v })} />
+              </div>
+              {form.has_promotion && (
+                <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
+                  <div className="space-y-1.5">
+                    <Label>Preço promocional (MZN)</Label>
+                    <Input type="number" inputMode="decimal" min="0" step="0.01" value={form.promotional_price_mzn} onChange={(e) => setForm({ ...form, promotional_price_mzn: e.target.value })} />
+                    {promoValid && <p className="text-sm font-semibold text-primary">🏷️ {discountPercent}% OFF — de {mzn(price)} por {mzn(promo)}</p>}
+                    {form.promotional_price_mzn && !promoValid && <p className="text-sm text-destructive">⚠️ O preço promocional deve ser menor que o normal.</p>}
                   </div>
-                  {form.has_promotion && (
-                    <div className="space-y-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
-                      <div className="space-y-1.5">
-                        <Label>Preço promocional (MZN)</Label>
-                        <Input type="number" inputMode="decimal" min="0" step="0.01" value={form.promotional_price_mzn} onChange={(e) => setForm({ ...form, promotional_price_mzn: e.target.value })} />
-                        {promoValid && <p className="text-sm font-semibold text-primary">🏷️ {discountPercent}% OFF — de {mzn(price)} por {mzn(promo)}</p>}
-                        {form.promotional_price_mzn && !promoValid && <p className="text-sm text-destructive">⚠️ Deve ser menor que o preço normal.</p>}
-                      </div>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Início</Label><Input type="date" value={form.promotion_start_date} onChange={(e) => setForm({ ...form, promotion_start_date: e.target.value })} /></div>
-                        <div className="space-y-1.5"><Label className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Término</Label><Input type="date" value={form.promotion_end_date} onChange={(e) => setForm({ ...form, promotion_end_date: e.target.value })} /></div>
-                      </div>
-                    </div>
-                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5"><Label className="text-xs">Início</Label><Input type="date" value={form.promotion_start_date} onChange={(e) => setForm({ ...form, promotion_start_date: e.target.value })} /></div>
+                    <div className="space-y-1.5"><Label className="text-xs">Fim</Label><Input type="date" value={form.promotion_end_date} onChange={(e) => setForm({ ...form, promotion_end_date: e.target.value })} /></div>
+                  </div>
                 </div>
+              )}
+            </div>
 
-                <Separator />
-
-                {/* Cores */}
+            {/* Opcionais (fechados por defeito) */}
+            <div className="space-y-3">
+              <Fold title="Cores e tamanhos" icon={Palette} hint={colorsHint} defaultOpen={selectedColors.length > 0 || selectedSizes.length > 0}>
                 <div className="space-y-3">
                   <Label className="flex items-center gap-1.5"><Palette className="h-4 w-4" /> Cores</Label>
                   <div className="flex flex-wrap gap-2">
@@ -573,11 +640,7 @@ const AdminProducts = () => {
                     </div>
                   )}
                 </div>
-
-                <Separator />
-
-                {/* Tamanhos */}
-                <div className="space-y-3">
+                <div className="space-y-3 border-t pt-4">
                   <Label className="flex items-center gap-1.5"><Ruler className="h-4 w-4" /> Tamanhos</Label>
                   <Select value={sizeCategory} onValueChange={setSizeCategory}>
                     <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
@@ -597,33 +660,39 @@ const AdminProducts = () => {
                   </div>
                   {selectedSizes.length > 0 && <p className="text-xs text-muted-foreground">Seleccionados: {selectedSizes.join(", ")}</p>}
                 </div>
+              </Fold>
 
-                <Separator />
-
-                {/* Peso, SKU, tags */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Fold title="Mais opções" icon={SlidersHorizontal} hint="SKU, peso, tags, SEO">
+                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1.5"><Weight className="h-4 w-4" /> Peso (kg)</Label>
-                    <Input type="number" inputMode="decimal" min="0" step="0.1" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} placeholder="Ex: 0.5" />
+                    <Label className="text-xs">SKU</Label>
+                    <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="Automático" />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1.5"><Hash className="h-3.5 w-3.5" /> SKU</Label>
-                    <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="Vazio = automático" />
+                    <Label className="text-xs">Peso (kg)</Label>
+                    <Input type="number" inputMode="decimal" min="0" step="0.1" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} placeholder="Ex: 0.5" />
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Tags (separadas por vírgula)</Label>
+                  <Label className="text-xs">Tags (separadas por vírgula)</Label>
                   <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="moda, verão, premium" />
                 </div>
-              </div>
-            </details>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between"><Label className="text-xs">Título para pesquisa (Google)</Label><span className="text-xs text-muted-foreground">{form.meta_title.length}/60</span></div>
+                  <Input value={form.meta_title} onChange={(e) => setForm({ ...form, meta_title: e.target.value })} placeholder={form.name || "Igual ao nome, se vazio"} maxLength={60} />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between"><Label className="text-xs">Descrição para pesquisa (Google)</Label><span className="text-xs text-muted-foreground">{form.meta_description.length}/160</span></div>
+                  <Textarea value={form.meta_description} onChange={(e) => setForm({ ...form, meta_description: e.target.value })} maxLength={160} rows={2} />
+                </div>
+              </Fold>
+            </div>
           </div>
 
-          <div className="flex gap-2 border-t bg-background px-4 py-3 sm:px-6">
-            <Button variant="outline" onClick={() => requestClose(false)} disabled={uploading}>Cancelar</Button>
-            <Button className="flex-1" onClick={handleSave} disabled={uploading || processing}>
-              {(uploading || processing) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {processing && !uploading ? "A preparar fotos..." : saveLabel}
+          <div className="flex gap-3 border-t bg-background px-4 py-3 sm:px-6">
+            <Button type="button" variant="outline" onClick={() => requestClose(false)} disabled={saving}>Cancelar</Button>
+            <Button type="button" className="flex-1" onClick={handleSave} disabled={saving || processing}>
+              {saving ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />{progress || "A guardar..."}</>) : editing ? "Guardar alterações" : "Criar produto"}
             </Button>
           </div>
         </DialogContent>
