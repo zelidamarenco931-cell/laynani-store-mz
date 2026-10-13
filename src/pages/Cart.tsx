@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { useCart } from "@/contexts/CartContext";
+import { useCart, cartLineKey } from "@/contexts/CartContext";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -44,25 +44,34 @@ const Cart = () => {
         <h1 className="mb-6 text-3xl font-bold">Carrinho ({totalItems})</h1>
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="flex flex-col gap-4 lg:col-span-2">
-            {items.map((item) => (
-              <div key={item.id} className="flex gap-4 rounded-xl border p-4 shadow-card">
-                <img src={item.image} alt={item.name} className="h-24 w-24 rounded-lg object-cover" />
-                <div className="flex flex-1 flex-col justify-between">
-                  <div>
-                    <Link to={`/produto/${item.id}`} className="font-medium hover:text-primary">{item.name}</Link>
-                    <p className="text-sm font-bold text-primary">{item.price.toLocaleString("pt-MZ")} MZN</p>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center rounded-lg border">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.id, item.quantity - 1)}><Minus className="h-3 w-3" /></Button>
-                      <span className="w-8 text-center text-sm">{item.quantity}</span>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.id, item.quantity + 1)}><Plus className="h-3 w-3" /></Button>
+            {items.map((item) => {
+              const lineKey = cartLineKey(item);
+              return (
+                <div key={lineKey} className="flex gap-4 rounded-xl border p-4 shadow-card">
+                  <img src={item.image} alt={item.name} className="h-24 w-24 rounded-lg object-cover" />
+                  <div className="flex flex-1 flex-col justify-between">
+                    <div>
+                      <Link to={`/produto/${item.id}`} className="font-medium hover:text-primary">{item.name}</Link>
+                      {(item.size || item.color) && (
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {item.size && <span className="rounded border bg-muted px-2 py-0.5 text-xs font-semibold">Tamanho: {item.size}</span>}
+                          {item.color && <span className="rounded border bg-muted px-2 py-0.5 text-xs font-semibold">Cor: {item.color}</span>}
+                        </div>
+                      )}
+                      <p className="mt-1 text-sm font-bold text-primary">{item.price.toLocaleString("pt-MZ")} MZN</p>
                     </div>
-                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeItem(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center rounded-lg border">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateQuantity(lineKey, item.quantity - 1)}><Minus className="h-3 w-3" /></Button>
+                        <span className="w-8 text-center text-sm">{item.quantity}</span>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateQuantity(lineKey, item.quantity + 1)}><Plus className="h-3 w-3" /></Button>
+                      </div>
+                      <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeItem(lineKey)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="rounded-xl border p-6 shadow-card h-fit">
             <h3 className="mb-4 text-lg font-semibold">Resumo</h3>
