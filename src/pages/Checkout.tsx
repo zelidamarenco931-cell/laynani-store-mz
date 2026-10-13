@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import DeliveryTimes from "@/components/DeliveryTimes";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,8 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Smartphone, ArrowLeft, Zap, Plane, Ship, Info } from "lucide-react";
-import { DELIVERY_AIR, DELIVERY_SEA, DELIVERY_NOTICE } from "@/lib/delivery";
+import { Smartphone, ArrowLeft, Zap } from "lucide-react";
 
 // Todos os pagamentos são automáticos (Débito Pay), confirmados sem comprovante.
 const paymentMethods = [
@@ -381,6 +381,12 @@ const Checkout = () => {
               </div>
             </div>
 
+            {/* Prazos de entrega */}
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 shadow-card sm:p-6">
+              <h2 className="mb-3 text-base font-semibold sm:text-lg">Prazo de entrega</h2>
+              <DeliveryTimes />
+            </div>
+
             {/* Payment methods */}
             <div className="rounded-xl border p-4 sm:p-6 shadow-card space-y-3 sm:space-y-4">
               <h2 className="text-base font-semibold sm:text-lg">Método de Pagamento</h2>
@@ -453,24 +459,6 @@ const Checkout = () => {
                   </p>
                 </div>
               )}
-            </div>
-
-            {/* Prazos de entrega (só aqui e no rodapé) */}
-            <div className="rounded-xl border p-4 sm:p-6 shadow-card space-y-3">
-              <h2 className="text-base font-semibold sm:text-lg">Prazos de Entrega</h2>
-              <div className="space-y-2 rounded-lg bg-muted p-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <Plane className="h-5 w-5 shrink-0 text-primary" />
-                  <span>Entrega aérea: <strong>{DELIVERY_AIR}</strong></span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Ship className="h-5 w-5 shrink-0 text-primary" />
-                  <span>Entrega marítima: <strong>{DELIVERY_SEA}</strong></span>
-                </div>
-              </div>
-              <p className="flex items-start gap-2 text-xs text-muted-foreground">
-                <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" /> {DELIVERY_NOTICE}
-              </p>
             </div>
 
             {/* Mobile button */}
