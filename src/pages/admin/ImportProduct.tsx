@@ -27,8 +27,6 @@ const ImportProduct = () => {
     promotional_price_mzn: "",
     stock: "10",
     category_id: "",
-    delivery_time_min: "7",
-    delivery_time_max: "20",
     status: "active",
   });
 
@@ -103,8 +101,6 @@ const ImportProduct = () => {
       promotional_price_mzn: form.promotional_price_mzn ? parseFloat(form.promotional_price_mzn) : null,
       stock: parseInt(form.stock),
       category_id: form.category_id || null,
-      delivery_time_min: parseInt(form.delivery_time_min),
-      delivery_time_max: parseInt(form.delivery_time_max),
       status: form.status,
       images: selectedImages,
       has_promotion: !!form.promotional_price_mzn,
@@ -266,17 +262,6 @@ const ImportProduct = () => {
                     {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Prazo mínimo (dias)</Label>
-                <Input type="number" value={form.delivery_time_min} onChange={e => setForm(p => ({ ...p, delivery_time_min: e.target.value }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Prazo máximo (dias)</Label>
-                <Input type="number" value={form.delivery_time_max} onChange={e => setForm(p => ({ ...p, delivery_time_max: e.target.value }))} />
               </div>
             </div>
 
