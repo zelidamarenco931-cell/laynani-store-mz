@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
+import Logo from "@/components/Logo";
 
 const Navbar = () => {
   const { totalItems } = useCart();
@@ -29,7 +30,7 @@ const Navbar = () => {
           </SheetTrigger>
           <SheetContent side="left" className="w-72">
             <div className="mt-8 flex flex-col gap-4">
-              <Link to="/" className="text-2xl font-bold text-gradient">Laynani</Link>
+              <Link to="/" aria-label="Laynani Store"><Logo className="text-2xl" /></Link>
               {navLinks.map((l) => (
                 <Link key={l.href} to={l.href} className="text-lg font-medium text-foreground/80 hover:text-primary transition-colors">{l.label}</Link>
               ))}
@@ -39,9 +40,8 @@ const Navbar = () => {
             </div>
           </SheetContent>
         </Sheet>
-        <Link to="/" className="flex items-center gap-1">
-          <span className="text-2xl font-extrabold text-gradient">Laynani</span>
-          <span className="hidden text-xs font-medium text-muted-foreground sm:block">Moçambique</span>
+        <Link to="/" aria-label="Laynani Store" className="flex items-center">
+          <Logo className="text-xl sm:text-2xl" />
         </Link>
         <nav className="hidden items-center gap-6 md:flex">
           {navLinks.map((l) => (
