@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import Logo from "@/components/Logo";
 import { Truck, ShieldCheck, CreditCard, Headphones, MessageCircle, Instagram, Facebook, Youtube, Phone } from "lucide-react";
 import { DELIVERY_AIR, DELIVERY_SEA, DELIVERY_NOTICE } from "@/lib/delivery";
 
@@ -47,7 +48,7 @@ const Footer = () => (
     <div className="container grid grid-cols-2 gap-x-6 gap-y-8 px-4 py-10 md:grid-cols-12">
       {/* Marca + redes sociais */}
       <div className="col-span-2 md:col-span-4">
-        <h3 className="text-xl font-extrabold text-gradient">Laynani Store</h3>
+        <Logo className="text-xl" />
         <p className="mt-2 max-w-xs text-sm text-muted-foreground">Tudo o que você precisa, entregue em Moçambique.</p>
 
         <p className="mb-3 mt-5 text-xs font-semibold uppercase tracking-wider text-foreground">Siga-nos</p>
