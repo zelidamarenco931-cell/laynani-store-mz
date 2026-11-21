@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import Logo from "@/components/Logo";
 import { LayoutDashboard, ShoppingBag, Package, DollarSign, Settings, ArrowLeft, Menu, FolderOpen, Megaphone, Users, UserCheck, Download, Percent } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -33,7 +34,7 @@ const AdminLayout = () => {
 
   const Sidebar = () => (
     <div className="flex flex-col gap-1">
-      <Link to="/" className="mb-4 text-xl font-bold text-gradient">Laynani Admin</Link>
+      <Link to="/" className="mb-4 flex items-baseline gap-2"><Logo className="text-xl" /><span className="text-xs font-semibold uppercase text-muted-foreground">Admin</span></Link>
       {adminLinks.map((l) => (
         <Link
           key={l.href}
@@ -67,7 +68,7 @@ const AdminLayout = () => {
             <SheetTrigger asChild><Button variant="ghost" size="icon"><Menu className="h-5 w-5" /></Button></SheetTrigger>
             <SheetContent side="left" className="w-64 p-4"><Sidebar /></SheetContent>
           </Sheet>
-          <span className="text-lg font-bold text-gradient">Laynani Admin</span>
+          <span className="flex items-baseline gap-2"><Logo className="text-lg" /><span className="text-[10px] font-semibold uppercase text-muted-foreground">Admin</span></span>
         </header>
         <main className="flex-1 p-3 sm:p-4 lg:p-8 min-w-0 overflow-x-hidden">
           <Outlet />
